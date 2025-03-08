@@ -1,0 +1,17 @@
+{% extends 'adminoperations/admin_base.html' %}
+{% block content %}
+<div class="container">
+    <h2>Cancel Order</h2>
+    <div class="card">
+        <div class="card-body">
+            <h5 class="card-title">Are you sure you want to cancel Order #{{ order.id }}?</h5>
+            <form method="post">
+                {% csrf_token %}
+                {{ form.as_p }}
+                <button type="submit" class="btn btn-danger">Confirm Cancellation</button>
+                <a href="{% url 'admin_order_details' order.id %}" class="btn btn-secondary">Back</a>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

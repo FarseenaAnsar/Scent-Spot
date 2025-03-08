@@ -1,0 +1,53 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container">
+    <div class="p-4 m-4">
+        {% if flag == False %}
+            {% if status %}
+                <div class="alert alert-warning alert-dismissible fade show" role="alert">
+                    {{status}}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                </div>
+            {% endif %}
+            <div class=" col-lg-5 mx-auto border rounded p-3">
+                <h3 class="alert">Change Password</h3>
+                <form action="/forgotpass", method ="POST">
+                    {% csrf_token%}
+                    <!-- phone number -->
+                    <div class="form-group mb-2">
+                        <label for="">E-Mail</label>
+                        <input 
+                            type="email" 
+                            name="email"
+                            class="form-control form-control-sm" >
+                    </div>
+                    <button type="submit" class="btn btn-primary">Next</button>
+                </form>
+            </div>
+        {% endif %}
+
+        {% if flag == True %}
+            <div class=" col-lg-5 mx-auto border rounded p-3">
+                <h3 class="alert">Enter The OTP</h3>
+                <form action="/otp", method ="POST">
+                    {% csrf_token%}
+                    <!-- e-mail -->
+                    <div class="form-group mb-2">
+                        <label for="">OTP</label>
+                        <input 
+                            type="text" 
+                            name="otp_given"
+                            class="form-control form-control-sm" 
+                            placeholder="Enter OTP">
+                        <input hidden type="text" class="btn btn-primary btn-sm" value="{{otp}}" name="otp">
+                        <input hidden type="text" class="btn btn-primary btn-sm" value="{{email}}" name="email">
+                        <small>Enter the 4-digit OTP sent to you on your given e-mail</small>
+                    </div>
+                    <button type="submit" class="btn btn-primary">Submit</button>
+                </form>
+            </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

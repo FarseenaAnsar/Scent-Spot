@@ -1,0 +1,56 @@
+{% extends "base.html" %}
+{%  load static %}
+{% block css%}
+    <link href="static/css/contact.css" rel="stylesheet" type="text/css">
+{% endblock %}
+
+{% block content %}
+{% load cart %}
+    <div class="breadcrumb">
+        <a href="/">Home</a> / Contact
+    </div>
+
+    <div class="contact-container">
+        <div class="contact-info">
+            <div class="icon-section">
+                <div class="icon">📞</div>
+                <div class="info-content">
+                    <h3>Call To Us</h3>
+                    <p>We are available 24/7, 7 days a week.</p>
+                    <p>Phone: +911111122222</p>
+                </div>
+            </div>
+
+            <div class="divider"></div>
+
+            <div class="icon-section">
+                <div class="icon">✉️</div>
+                <div class="info-content">
+                    <h3>Write To US</h3>
+                    <p>Fill out our form and we will contact you within 24 hours.</p>
+                    <p>Emails: customer@exclusive.com</p>
+                    <p>Emails: support@exclusive.com</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="contact-form">
+            <form>
+                {% csrf_token %}
+                <div class="form-group">
+                    <input type="text" placeholder="Your Name *" required>
+                </div>
+                <div class="form-group">
+                    <input type="email" placeholder="Your Email *" required>
+                </div>
+                <div class="form-group">
+                    <input type="tel" placeholder="Your Phone *" required>
+                </div>
+                <div class="form-group">
+                    <textarea placeholder="Your Message"></textarea>
+                </div>
+                <button type="submit" class="submit-btn">Send Message</button>
+            </form>
+        </div>
+    </div>
+{% endblock %}

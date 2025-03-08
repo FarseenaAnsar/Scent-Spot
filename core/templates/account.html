@@ -1,0 +1,207 @@
+{% extends "base.html" %}
+{%  load static %}
+{% block css%}
+    <link href="static/css/account.css" rel="stylesheet" type="text/css">
+{% endblock %}
+
+{% block content %}
+{% load custom_filters %}
+    <div class="container">
+        <div class="sidebar">
+            <h2>Manage My Account</h2>
+            <div class="user-info">
+                <h3>Welcome, {{ customer.first_name }} {{ customer.last_name }}</h3>
+                <p>{{ customer.email }}</p>
+            </div>
+            <ul>
+                <li><a href="#profile">My Profile</a></li>
+                <li><a href="#address">Address Book</a></li>
+                <li><a href="#orders">My Orders</a></li>
+                <li><a href="#returns">My Returns</a></li>
+                <li><a href="#cancellations">My Cancellations</a></li>
+                <li><a href="#wishlist">My Wishlist</a></li>
+                <li><a href="#wallet">My Wallet</a></li>
+                <li><a href="{% url 'user_logout' %}">Logout</a></li>
+            </ul>
+        </div>
+
+        <div class="main-content">
+            <section id="profile" class="content-section">
+                <h3>Edit Your Profile</h3>
+                <form method="POST">
+                    {% csrf_token %}
+                    
+                    {% if messages %}
+                    <div class="messages">
+                        {% for message in messages %}
+                        <div class="alert {% if message.tags %}alert-{{ message.tags }}{% endif %}">
+                            {{ message }}
+                        </div>
+                        {% endfor %}
+                    </div>
+                    {% endif %}
+            
+                    <div class="form-group">
+                        <label>First Name</label>
+                        <input type="text" name="first_name" value="{{ form.first_name.value|default:'' }}" class="form-control">
+                    </div>
+            
+                    <div class="form-group">
+                        <label>Last Name</label>
+                        <input type="text" name="last_name" value="{{ form.last_name.value|default:'' }}" class="form-control">
+                    </div>
+            
+                    <div class="form-group">
+                        <label>Email</label>
+                        <input type="email" name="email" value="{{ form.email.value|default:'' }}" class="form-control">
+                    </div>
+            
+                    <div class="form-group">
+                        <label>Phone</label>
+                        <input type="text" name="phone" value="{{ form.phone.value|default:'' }}" class="form-control">
+                    </div>
+            
+                    <div class="form-group">
+                        <label>Current Password</label>
+                        <input type="password" name="current_password" class="form-control">
+                    </div>
+            
+                    <div class="form-group">
+                        <label>New Password</label>
+                        <input type="password" name="new_password" class="form-control">
+                    </div>
+            
+                    <div class="form-group">
+                        <label>Confirm New Password</label>
+                        <input type="password" name="confirm_password" class="form-control">
+                    </div>
+            
+                    <div class="button-group">
+                        <a href="{% url 'profile' %}" class="button button-secondary">Cancel</a>
+                        <button type="submit" class="button button-primary">Save Changes</button>
+                    </div>
+                </form>
+            </section>
+
+            <section id="orders" class="content-section">
+                <div class="account-section orders-section">
+                    <h3>Recent Orders</h3>
+                    {% if orders %}
+                        <div class="orders-list">
+                            {% for order in orders %}
+                                <div class="order-card">
+                                    <div class="order-header">
+                                        <span class="order-id">Order #{{ order.id }}</span>
+                                        <span class="order-date">{{ order.date|date:"M d, Y" }}</span>
+                                        <span class="order-status {{ order.status|lower }}">{{ order.status }}</span>
+                                    </div>
+                                    <div class="order-details">
+                                        <p class="order-total">Total: ${{ order.total_amount|floatformat:2 }}</p>
+                                        
+                                        {% if order.status == 'PENDING' or order.status == 'PROCESSING' %}
+                                            <form method="POST" class="order-actions">
+                                                {% csrf_token %}
+                                                <input type="hidden" name="action" value="cancel">
+                                                <input type="hidden" name="order_id" value="{{ order.id }}">
+                                                <button type="submit" class="btn btn-danger">Cancel Order</button>
+                                            </form>
+                                        {% endif %}
+            
+                                        {% if order.status == 'DELIVERED' and order.delivered_at|timesince|split:' '|first|add:"0" <= 7 %}
+                                            <form method="POST" class="order-actions">
+                                                {% csrf_token %}
+                                                <input type="hidden" name="action" value="return">
+                                                <input type="hidden" name="order_id" value="{{ order.id }}">
+                                                <input type="text" name="return_reason" placeholder="Reason for return" required>
+                                                <button type="submit" class="btn btn-warning">Request Return</button>
+                                            </form>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            {% endfor %}
+                        </div>
+                    {% else %}
+                        <p class="no-orders">No orders found</p>
+                    {% endif %}
+                </div>
+            </section>
+
+            <section id="address" class="content-section">
+                <h3>Address Book</h3>
+                <div class="form-group">
+                    <label>Default Shipping Address</label>
+                    <input type="text" value="Palakkad, Kerala">
+                </div>
+            </section>
+
+            <section id="returns" class="content-section">
+                
+                <div class="account-section returns-section">
+                    <h3>My Returns </h3>
+                    {% if return_requests %}
+                        <div class="returns-list">
+                            {% for return_request in return_requests %}
+                                <div class="return-card">
+                                    <div class="return-header">
+                                        <span class="return-id">Return #{{ return_request.id }}</span>
+                                        <span class="return-status {{ return_request.status|lower }}">
+                                            {{ return_request.status }}
+                                        </span>
+                                    </div>
+                                    <div class="return-details">
+                                        <p>Order #{{ return_request.order.id }}</p>
+                                        <p>Reason: {{ return_request.reason }}</p>
+                                    </div>
+                                </div>
+                            {% endfor %}
+                        </div>
+                    {% else %}
+                        <p class="no-returns">No return requests found</p>
+                    {% endif %}
+                </div>
+            </section>
+
+            <section id="cancellations" class="content-section">
+                <h3>My Cancellations</h3>
+                <p>No cancellations found.</p>
+            </section>
+
+            <section id="wishlist" class="content-section">
+                <div class="account-section wishlist-section">
+                    <h3>Wishlist</h3>
+                    {% if wishlist %}
+                        <div class="wishlist-preview">
+                            {% for item in wishlist|slice:":3" %}
+                                <div class="wishlist-item">
+                                    {% if item.product.image %}
+                                        <img src="{{ item.product.image.url }}" alt="{{ item.product.name }}" height="30%" width="30%">
+                                    {% endif %}
+                                    <p>{{ item.product.name }}</p>
+                                    <p class="price">${{ item.product.price|floatformat:2 }}</p>
+                                </div>
+                            {% endfor %}
+                            {% if wishlist.count > 3 %}
+                                <a href="{% url 'wishlist' %}" class="view-all">View all ({{ wishlist.count }})</a>
+                            {% endif %}
+                        </div>
+                    {% else %}
+                        <p class="no-wishlist">Your wishlist is empty</p>
+                    {% endif %}
+                </div>
+            </section>
+
+            <section id="wallet" class="content-section">
+                <div class="account-section wallet-section">
+                    <h3>Wallet Balance</h3>
+                    <div class="wallet-balance">
+                        {% if wallet %}
+                            <p class="balance">${{ wallet.balance|floatformat:2 }}</p>
+                        {% else %}
+                            <p>No wallet found</p>
+                        {% endif %}
+                    </div>
+                </div>
+            </section>
+        </div>
+    </div>
+{% endblock %}

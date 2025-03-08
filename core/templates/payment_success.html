@@ -1,0 +1,63 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="container mt-5">
+    {% if error %}
+        <div class="alert alert-danger">
+            {{ error }}
+        </div>
+    {% else %}
+        <div class="card">
+            <div class="card-body">
+                <h2 class="card-title text-success">
+                    <i class="fas fa-check-circle"></i> Payment Successful!
+                </h2>
+                
+                <div class="order-details mt-4">
+                    <h4>Order Details</h4>
+                    <p><strong>Order ID:</strong> {{ order.order_id }}</p>
+                    <p><strong>Payment ID:</strong> {{ order.payment_id }}</p>
+                    <p><strong>Date:</strong> {{ order.created_at|date:"F d, Y" }}</p>
+                    <p><strong>Total Amount:</strong> ₹{{ order.price }}</p>
+                </div>
+
+                <div class="order-items mt-4">
+                    <h4>Ordered Items</h4>
+                    <table class="table">
+                        <thead>
+                            <tr>
+                                <th>Product</th>
+                                <th>Quantity</th>
+                                <th>Price</th>
+                                <th>Subtotal</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for item in order_items %}
+                            <tr>
+                                <td>{{ item.product.name }}</td>
+                                <td>{{ item.quantity }}</td>
+                                <td>₹{{ item.price }}</td>
+                                <td>₹{{ item.quantity|multiply:item.price }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="shipping-details mt-4">
+                    <h4>Shipping Details</h4>
+                    <p><strong>Name:</strong> {{ order.customer.first_name }}</p>
+                    <p><strong>Email:</strong> {{ order.customer.email }}</p>
+                    <p><strong>Shipping Address:</strong> {{ order.address }}</p>
+                </div>
+
+                <div class="text-center mt-4">
+                    <a href="{% url 'main' %}" class="btn btn-primary">Continue Shopping</a>
+                    <a href="#" class="btn btn-secondary" onclick="window.print()">Print Receipt</a>
+                </div>
+            </div>
+        </div>
+    {% endif %}
+</div>
+{% endblock %}

@@ -1,0 +1,287 @@
+{% extends "base.html" %}
+
+{% block css%}
+    <link href="static/profile.css" rel="stylesheet" type="text/css">
+{% endblock %}
+
+{% block content %}
+{% load cart %}
+<div style="position:relative">
+    <div class="box1"></div>
+    <div  class="center">
+        <div class="circle">
+            <i class="fas fa-user fa-4x"></i>
+        </div>
+    </div>
+</div>
+
+<div class="container-fluid">
+    <div class="row modify">
+        <div class="col-lg-3">
+            <div class="row filter"><a class="items" href="/profile?info=personal">Personal Information</a></div>
+            <div class="row filter"><a class="items" href="/profile?info=purchased">Purchased Items</a></div>
+            <div class="row filter"><a class="items" href="/profile?info=order">Order History</a></div>
+        </div>
+        <div class="col-lg-8">
+                {% if type == "personal" %}
+                    <div class="row row-cols-2 g">
+                        <div class="col s">
+                            <h5>First Name</h5> 
+                        </div>
+                        <div class="col s">
+                            <h5>{{information.first_name}}</h5> 
+                        </div>
+
+                        <div class="col s">
+                            <h5>Last Name</h5> 
+                        </div>
+                        <div class="col s">
+                            <h5>{{information.last_name}}</h5> 
+                        </div>
+
+                        <div class="col s">
+                            <h5>E-mail</h5>
+                        </div>
+                        <div class="col s">
+                            <h5>{{information.email}}</h5> 
+                        </div>
+
+                        <div class="col s">
+                           <h5>Gender</h5> 
+                        </div>
+                        <div class="col s">
+                            <h5>{{information.gender}}</h5> 
+                        </div>
+
+                        <div class="col s">
+                            <h5>Phone Number</h5> 
+                         </div>
+                         <div class="col s">
+                             <h5>{{information.phone}}</h5> 
+                         </div>
+                    </div>
+                {% endif %}
+
+                {% if type == "order" %}
+                    {% for o in orders %}
+                        <div class="card mx-auto mb-3 mt-4">
+                            <div class="card-body">
+                                <div class="row">
+                                    <div class="col">
+                                        <img class="img-thumbnail rounded" src="{{o.product.image.url}}" style="width:15rem">
+                                    </div>
+                                    <div class="col">
+                                        <h1>{{o.product.name}}</h1>
+                                        <br>
+                                        <div class="row">
+                                            <div class="col">
+                                                <h5>Date</h5>
+                                                <br>
+                                                <h4>Price</h4>
+                                                <h5>Quantity</h5>
+                                                <br>
+                                                <h3>Total</h3>
+                                                <br>
+                                                <h4>Status</h4>
+                                                <br>
+                                            </div>
+                                            <div class="col">
+                                                <h5 class="text-center">{{o.date}}</h5>
+                                                <br>
+                                                <h4 class="text-center"> {{o.price|currency}}</h4>
+                                                <h5 class="text-center">{{o.quantity}} </h5>
+                                                <br>
+                                                <h3 class="text-center">{{o.quantity|mul:o.price|currency}}</h3>
+                                                <br>
+                                                {% if o.status == "delivered" %}
+                                                    <h4>{{o.status}}</h4>
+                                                    <br><br>
+                                                {% else %}
+                                                    <h4>{{o.status}}</h4>
+                                                {% endif %}
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    {% endfor %}
+                {% endif %}
+
+                {% if type == "purchased" %}
+                {% for p in purchased %}
+                    <div class="card mx-auto mb-3 mt-4">
+                        <div class="card-body">
+                            <div class="row">
+                                <div class="col-5">
+                                    <img class="img-thumbnail rounded" src="{{p.product.image.url}}" style="width:15rem">
+                                </div>
+                                <div class="col-7">
+                                    <h1>{{p.name}}</h1>
+                                    <br>
+                                    <div class="row">
+                                        <div class="col-4">
+                                            <h5>Date</h5>
+                                            <br>
+                                            <h4>Price</h4>
+                                            <h5>Quantity</h5>
+                                            <br>
+                                            <h3>Total</h3>
+                                            <br>
+                                            <h4>Rating</h4>
+                                        </div>
+                                        <div class="col-8">
+                                            <h5 class="text-center">{{p.date}}</h5>
+                                            <br>
+                                            <h4 class="text-center"> {{p.price|currency}}</h4>
+                                            <h5 class="text-center">{{p.quantity}} </h5>
+                                            <br>
+                                            <h3 class="text-center">{{p.quantity|mul:p.price|currency}}</h3>
+                                            <br>
+                                            {% if p.rating != 0 %}
+                                                {% for i in p.rating|loop_counter %}
+                                                    <i class="fas fa-star fa-2x" style="color:rgb(255, 234, 0);"></i>
+                                                {% endfor %}
+                                            {% else %}
+                                                <div class="col">
+                                                    <form action="/profile" method="POST" style="display:flex;">
+                                                        {% csrf_token %}
+                                                        <input hidden name="o_idd" value="{{p.id}}">
+                                                        <input hidden name="p_idd" value="{{p.product.id}}">
+
+                                                        <input class="overlap_bottom" type="checkbox" id="chk1" onclick="myfunc1()" name="rate1">
+                                                        <label class="overlap_top"><i class="fas fa-star fa-2x yellow" id="yellow1"></i></label>
+
+                                                        <input type="checkbox" class="overlap_bottom" id="chk2" onclick="myfunc2()" name="rate2">
+                                                        <label class="overlap_top"><i class="fas fa-star fa-2x yellow" id="yellow2"></i></label>
+
+                                                        <input type="checkbox" class="overlap_bottom" id="chk3" onclick="myfunc3()"  name="rate3">
+                                                        <label class="overlap_top"><i class="fas fa-star fa-2x yellow" id="yellow3"></i></label>
+
+                                                        <input type="checkbox" class="overlap_bottom" id="chk4" onclick="myfunc4()"  name="rate4">
+                                                        <label class="overlap_top"><i class="fas fa-star fa-2x yellow" id="yellow4"></i></label>
+
+                                                        <input type="checkbox" class="overlap_bottom" id="chk5" onclick="myfunc5()" name="rate5">
+                                                        <label class="overlap_top"><i class="fas fa-star fa-2x yellow" id="yellow5"></i></label>
+                                                        
+                                                        <input type="submit" class="btn btn-sm btn_sty" name="sub_btn" value="RATE">
+                                                    </form>
+                                                </div>
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                {% endfor %}
+                {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block js %}
+    <script>
+        function myfunc1() {
+            var chk1 = document.getElementById("chk1");
+            var yellow1 = document.getElementById("yellow1");
+
+            if (chk1.checked == true) { yellow1.style.color = "yellow"; }
+            else { yellow1.style.color = "black"; }
+        }
+
+        function myfunc2() {
+            var chk2 = document.getElementById("chk2");
+            var chk1 = document.getElementById("chk1");
+
+            var yellow1 = document.getElementById("yellow1");
+            var yellow2 = document.getElementById("yellow2");
+
+            if (chk2.checked == true){
+                yellow1.style.color = "yellow";
+                yellow2.style.color = "yellow";
+            }
+            else {
+                yellow1.style.color = "black";
+                yellow2.style.color = "black";
+            }
+        }
+
+        function myfunc3() {
+            
+            var chk3 = document.getElementById("chk3");
+            var chk2 = document.getElementById("chk2");
+            var chk1 = document.getElementById("chk1");
+
+            var yellow3 = document.getElementById("yellow3");
+            var yellow2 = document.getElementById("yellow2");
+            var yellow1 = document.getElementById("yellow1");
+            
+            if (chk3.checked == true){
+                yellow1.style.color = "yellow";
+                yellow2.style.color = "yellow";
+                yellow3.style.color = "yellow";
+            }
+            else {
+                yellow1.style.color = "black";
+                yellow2.style.color = "black";
+                yellow3.style.color = "black";
+            }
+        }
+
+        function myfunc4() {
+            var chk4 = document.getElementById("chk4");
+            var chk3 = document.getElementById("chk3");
+            var chk2 = document.getElementById("chk2");
+            var chk1 = document.getElementById("chk1");
+
+            var yellow1 = document.getElementById("yellow1");
+            var yellow2 = document.getElementById("yellow2");
+            var yellow3 = document.getElementById("yellow3");
+            var yellow4 = document.getElementById("yellow4");
+
+            if (chk4.checked == true){
+                yellow1.style.color = "yellow";
+                yellow2.style.color = "yellow";
+                yellow3.style.color = "yellow";
+                yellow4.style.color = "yellow";
+            }
+            else {
+                yellow1.style.color = "black";
+                yellow2.style.color = "black";
+                yellow3.style.color = "black";
+                yellow4.style.color = "black";
+            }
+        }
+
+        function myfunc5() {
+            var chk5 = document.getElementById("chk5");
+            var chk4 = document.getElementById("chk4");
+            var chk3 = document.getElementById("chk3");
+            var chk2 = document.getElementById("chk2");
+            var chk1 = document.getElementById("chk1");
+
+            var yellow1 = document.getElementById("yellow1");
+            var yellow2 = document.getElementById("yellow2");
+            var yellow3 = document.getElementById("yellow3");
+            var yellow4 = document.getElementById("yellow4");
+            var yellow5 = document.getElementById("yellow5");
+
+            if (chk5.checked == true){
+                yellow1.style.color = "yellow";
+                yellow2.style.color = "yellow";
+                yellow3.style.color = "yellow";
+                yellow4.style.color = "yellow";
+                yellow5.style.color = "yellow";
+            }
+            else {
+                yellow1.style.color = "black";
+                yellow2.style.color = "black";
+                yellow3.style.color = "black";
+                yellow4.style.color = "black";
+                yellow5.style.color = "black";
+            }
+        }
+    </script>
+{% endblock %}

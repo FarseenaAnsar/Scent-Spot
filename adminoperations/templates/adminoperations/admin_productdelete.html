@@ -1,0 +1,50 @@
+{% extends 'adminoperations/admin_base.html' %}
+{% load static %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row justify-content-center">
+        <div class="col-lg-6">
+            <div class="card shadow mb-4">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">Delete Product</h6>
+                </div>
+                <div class="card-body text-center">
+                    <div class="mb-4">
+                        <i class="fas fa-exclamation-triangle text-warning fa-3x mb-3"></i>
+                        <h5>Are you sure you want to delete this product?</h5>
+                        
+                        <div class="product-details mt-4">
+                            {% if product.image %}
+                                <img src="{{ product.image.url }}" alt="{{ product.name }}" 
+                                     class="img-thumbnail mb-3" style="max-height: 200px;">
+                            {% endif %}
+                            <h6>{{ product.name }}</h6>
+                            <p class="text-muted">
+                                Category: {{ product.category.name }}<br>
+                                Price: ₹{{ product.price }}<br>
+                                Stock: {{ product.stock }}
+                            </p>
+                        </div>
+
+                        <div class="alert alert-warning" role="alert">
+                            <i class="fas fa-exclamation-circle"></i>
+                            This action cannot be undone!
+                        </div>
+                    </div>
+
+                    <form method="post">
+                        {% csrf_token %}
+                        <button type="submit" class="btn btn-danger">
+                            <i class="fas fa-trash"></i> Delete Product
+                        </button>
+                        <a href="{% url 'product_list' %}" class="btn btn-secondary">
+                            <i class="fas fa-times"></i> Cancel
+                        </a>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

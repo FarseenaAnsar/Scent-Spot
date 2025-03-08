@@ -1,0 +1,355 @@
+from django.contrib.auth.views import LoginView, LogoutView
+from django.views.generic import ListView, DetailView, CreateView, DeleteView
+from django.views.generic.edit import UpdateView
+from django.shortcuts import get_object_or_404
+from django.views.generic import TemplateView
+from django.contrib.auth import authenticate, login
+from django.shortcuts import redirect
+from django.urls import reverse_lazy, reverse
+from django.contrib import messages
+from django.http import HttpResponseRedirect
+from django.contrib.auth.mixins import LoginRequiredMixin
+from django.db.models import Count, Sum
+from core.models.order import Order
+from core.models.return_request import ReturnRequest, ReturnImage
+from core.models.product import Product
+from core.models.customer import Customer
+from core.models.category import Category
+from core.models.brand import Brand
+from .forms import CategoryForm
+from django.db.models import Q, F
+from .forms import ProductForm
+from django.utils import timezone  
+
+
+class AdminLoginView(LoginView):
+    template_name = 'adminoperations/admin_login.html'
+    success_url = reverse_lazy('admin_home')
+    redirect_authenticated_user = True
+
+    def get_success_url(self):
+        return reverse_lazy('admin_home')
+
+    def form_valid(self, form):
+        username = form.cleaned_data.get('username')
+        password = form.cleaned_data.get('password')
+        user = authenticate(username=username, password=password)
+
+        if user is not None and user.is_staff:
+            login(self.request, user)
+            messages.success(self.request, 'Successfully logged in as admin')
+            return HttpResponseRedirect(self.get_success_url())
+        else:
+            messages.error(self.request, 'Invalid credentials or insufficient permissions')
+            return self.form_invalid(form)
+
+    def get(self, request, *args, **kwargs):
+        if request.user.is_authenticated and request.user.is_staff:
+            return redirect(self.get_success_url())
+        return super().get(request, *args, **kwargs)
+
+class AdminLogoutView(LoginRequiredMixin, LogoutView):
+    next_page = reverse_lazy('admin_login')
+    
+    def dispatch(self, request, *args, **kwargs):
+        if request.user.is_authenticated:
+            messages.success(request, 'Successfully logged out')
+        return super().dispatch(request, *args, **kwargs)
+    
+    def get_next_page(self):
+        """
+        Override to customize redirect url after logout
+        """
+        return str(self.next_page)
+    
+class AdminHomeView(LoginRequiredMixin, TemplateView):
+    template_name = 'adminoperations/admin_home.html'
+    
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        
+        # Get dashboard statistics
+        context['total_users'] = Customer.objects.count()
+        context['total_products'] = Product.objects.count()
+        context['total_orders'] = Order.objects.count()
+        context['total_revenue'] = Order.objects.filter(status='Delivered').aggregate(
+            total=Sum(F('price') * F('quantity')))['total'] or 0
+        
+        # Recent orders
+        context['recent_orders'] = Order.objects.order_by('-date')[:5]
+        
+        # Top selling products
+        context['top_products'] = Product.objects.annotate(
+            order_count=Count('order')).order_by('-order_count')[:5]
+        
+        return context
+
+class UserListView(LoginRequiredMixin, ListView):
+    model = Customer
+    template_name = 'adminoperations/admin_userlist.html'
+    context_object_name = 'users'
+    paginate_by = 10
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        # Add extra context data for each user
+        users_data = []
+        for user in context['users']:
+            user_data = {
+                'user': user,
+                'total_orders': Order.objects.filter(customer=user).count(),
+                'total_spent': Order.objects.filter(customer=user, status='Delivered').aggregate(
+                    total=Sum(F('price') * F('quantity')))['total'] or 0,
+            }
+            users_data.append(user_data)
+        context['users_data'] = users_data
+        return context
+
+class UserDetailView(LoginRequiredMixin, DetailView):
+    model = Customer
+    template_name = 'adminoperations/admin_userdetails.html'
+    context_object_name = 'user'
+    pk_url_kwarg = 'user_id'
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        user = self.get_object()
+        
+        # Get user's orders
+        orders = Order.objects.filter(customer=user).order_by('-date') 
+        context['orders'] = orders
+        
+        
+        # Get user statistics
+        context['total_orders'] = context['orders'].count()
+        context['total_spent'] = context['orders'].filter(status='Delivered').aggregate(
+            total=Sum(F('price') * F('quantity')))['total'] or 0
+        context['order_status_count'] = context['orders'].values('status').annotate(
+            count=Count('id'))
+        
+        return context
+
+class CategoryListView(LoginRequiredMixin, ListView):
+    model = Category
+    template_name = 'adminoperations/admin_categorylist.html'
+    context_object_name = 'categories'
+    paginate_by = 10
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['total_categories'] = Category.objects.count()
+        return context
+
+class CategoryCreateView(LoginRequiredMixin, CreateView):
+    model = Category
+    template_name = 'adminoperations/admin_categoryform.html'
+    form_class = CategoryForm
+    success_url = reverse_lazy('category_list')
+
+    def form_valid(self, form):
+        messages.success(self.request, 'Category created successfully!')
+        return super().form_valid(form)
+
+class CategoryUpdateView(LoginRequiredMixin, UpdateView):
+    model = Category
+    template_name = 'adminoperations/admin_categoryform.html'
+    fields = ['name','description']  
+    pk_url_kwarg = 'category_id'  
+    
+    def get_success_url(self):
+        return reverse('category_list')
+
+class CategoryDeleteView(LoginRequiredMixin, DeleteView):
+    model = Category
+    template_name = 'adminoperations/admin_categorydelete.html'
+    success_url = reverse_lazy('category_list')
+
+    def delete(self, request, *args, **kwargs):
+        messages.success(self.request, 'Category deleted successfully!')
+        return super().delete(request, *args, **kwargs)
+
+
+class ProductListView(LoginRequiredMixin, ListView):
+    model = Product
+    template_name = 'adminoperations/admin_productlist.html'
+    context_object_name = 'products'
+    paginate_by = 10
+
+    def get_queryset(self):
+        queryset = Product.objects.all().order_by('-name')
+        search_query = self.request.GET.get('search')
+        category_filter = self.request.GET.get('category')
+
+        if search_query:
+            queryset = queryset.filter(
+                Q(name__icontains=search_query) |
+                Q(description__icontains=search_query)
+            )
+        
+        if category_filter:
+            queryset = queryset.filter(category_id=category_filter)
+
+        return queryset
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['categories'] = Category.objects.all()
+        context['selected_category'] = self.request.GET.get('category')
+        return context
+
+class ProductCreateView(LoginRequiredMixin, CreateView):
+    model = Product
+    form_class = ProductForm
+    template_name = 'adminoperations/admin_productform.html'
+    success_url = reverse_lazy('product_list')
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['title'] = 'Add New Product'
+        context['button_text'] = 'Create Product'
+        return context
+
+    def form_valid(self, form):
+        response = super().form_valid(form)
+        messages.success(self.request, 'Product created successfully!')
+        return response
+
+class ProductUpdateView(LoginRequiredMixin, UpdateView):
+    model = Product
+    form_class = ProductForm
+    template_name = 'adminoperations/admin_productform.html'
+    success_url = reverse_lazy('product_list')
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['title'] = 'Edit Product'
+        context['button_text'] = 'Update Product'
+        return context
+
+    def form_valid(self, form):
+        response = super().form_valid(form)
+        messages.success(self.request, 'Product updated successfully!')
+        return response
+
+class ProductDeleteView(LoginRequiredMixin, DeleteView):
+    model = Product
+    template_name = 'adminoperations/admin_productdelete.html'
+    success_url = reverse_lazy('product_list')
+    context_object_name = 'product'
+
+    def delete(self, request, *args, **kwargs):
+        response = super().delete(request, *args, **kwargs)
+        messages.success(self.request, 'Product deleted successfully!')
+        return response
+    
+    
+class AdminOrderListView(LoginRequiredMixin, ListView):
+    model = Order
+    template_name = 'adminoperations/admin_orderlist.html'
+    context_object_name = 'orders'
+    paginate_by = 10  # Optional: add pagination
+    
+    def get_queryset(self):
+        orders = Order.objects.select_related('customer', 'product').all().order_by('-date')
+        # Debug print
+        for order in orders:
+            print(f"Order ID: {order.id}")
+            print(f"Customer: {order.customer}")
+            print(f"Customer Name: {order.customer.first_name if order.customer else 'No customer'}")
+            print(f"Date: {order.date}")
+            print("-------------------")
+        return orders
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        print(f"Number of orders in context: {len(context['orders'])}")
+        return context
+
+
+class AdminOrderDetailView(LoginRequiredMixin, DetailView):
+    model = Order
+    template_name = 'adminoperations/admin_orderdetail.html'
+    context_object_name = 'order'
+    pk_url_kwarg = 'order_id'
+
+class AdminOrderCancelView(LoginRequiredMixin, UpdateView):
+    model = Order
+    template_name = 'adminoperations/admin_ordercancel.html'
+    fields = ['status']
+    pk_url_kwarg = 'order_id'
+    success_url = reverse_lazy('admin_order_list')
+
+    def form_valid(self, form):
+        form.instance.status = 'cancelled'
+        return super().form_valid(form)
+
+class OrderReturnView(LoginRequiredMixin, UpdateView):
+    model = ReturnRequest
+    template_name = 'adminoperations/admin_orderreturn.html'
+    context_object_name = 'return_request'
+    pk_url_kwarg = 'order_id'
+    fields = ['status', 'admin_notes']
+
+    def get_object(self):
+        order_id = self.kwargs.get('order_id')
+        return get_object_or_404(ReturnRequest, order__id=order_id)
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['status_choices'] = ReturnRequest.STATUS_CHOICES
+        return context
+
+    def form_valid(self, form):
+        return_request = form.instance
+        action = self.request.POST.get('action')
+        
+        if action == 'approve':
+            return_request.status = 'approved'
+            return_request.processed_date = timezone.now()
+            return_request.order.status = 'return_approved'
+            return_request.order.save()
+            messages.success(self.request, f'Return request #{return_request.id} has been approved')
+        
+        elif action == 'reject':
+            return_request.status = 'rejected'
+            return_request.processed_date = timezone.now()
+            return_request.order.status = 'return_rejected'
+            return_request.order.save()
+            messages.success(self.request, f'Return request #{return_request.id} has been rejected')
+        
+        elif action == 'complete':
+            return_request.status = 'completed'
+            return_request.processed_date = timezone.now()
+            return_request.order.status = 'returned'
+            return_request.order.save()
+            messages.success(self.request, f'Return request #{return_request.id} has been marked as completed')
+        
+        return super().form_valid(form)
+
+    def get_success_url(self):
+        return reverse_lazy('admin_order_list')
+
+    
+    
+class BrandListView(LoginRequiredMixin, ListView):
+    model = Brand
+    template_name = 'adminoperations/admin_brandlist.html'
+    context_object_name = 'brands'
+    
+
+class BrandCreateView(LoginRequiredMixin, CreateView):
+    model = Brand
+    template_name = 'adminoperations/admin_brandform.html'
+    fields = ['brand_name']
+    success_url = reverse_lazy('brand_list')
+
+class BrandUpdateView(LoginRequiredMixin, UpdateView):
+    model = Brand
+    template_name = 'adminoperations/admin_brandform.html'
+    fields = ['brand_name']
+    success_url = reverse_lazy('brand_list')
+
+class BrandDeleteView(LoginRequiredMixin, DeleteView):
+    model = Brand
+    template_name = 'adminoperations/admin_branddelete.html'
+    success_url = reverse_lazy('brand_list')

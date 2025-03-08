@@ -1,0 +1,31 @@
+.overlap_top {
+    position: relative;
+    z-index: 8;
+}
+.overlap_bottom {
+    position: relative;
+    left: 27px;
+    z-index: 19;
+    height: 20px;
+    width: 15px;
+}
+
+.yellow:hover{
+    color: rgb(255, 251, 0);
+}
+.btn_sty {
+    margin-bottom:2%; 
+    margin-left: 3%; 
+    display:flex;
+    width: 18%;
+}
+
+.btn_not {
+    margin-bottom:2%; 
+    margin-left: 3%; 
+    display:flex;
+    width: 26%;
+}
+.hide_class {
+    opacity: 0;
+}

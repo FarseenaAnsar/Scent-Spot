@@ -1,0 +1,65 @@
+{% extends "base.html" %}
+{% load static %}
+{% block css%}
+    <link href="static/css/wishlist.css" rel="stylesheet" type="text/css">
+{% endblock %}
+
+{% block content %}
+<div class="wishlist-container">
+    <div class="wishlist-header">
+        <h1>My Wishlist</h1>
+        {% if wishlist_items %}
+            <p>{{ wishlist_items|length }} items in your wishlist</p>
+        {% endif %}
+    </div>
+
+    {% if messages %}
+    <div class="messages">
+        {% for message in messages %}
+            <div class="alert alert-{{ message.tags }}">
+                {{ message }}
+            </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+
+    {% if wishlist_items %}
+        <div class="wishlist-grid">
+            {% for item in wishlist_items %}
+                <div class="wishlist-card">
+                    <div class="wishlist-img-wrapper">
+                        <img src="{{ item.product.image.url }}" alt="{{ item.product.name }}">
+                        <form action="{% url 'add_to_cart' item.product.id %}" method="POST">
+                            {% csrf_token %}
+                            <input type="number" name="quantity" value="1" min="1" max="3" class="form-control" style="width: 80px;">
+                            <button type="submit" class="btn btn-primary">Add to Cart</button>
+                        </form>
+                    </div>
+                    <div class="wishlist-content">
+                        <h3>{{ item.product.name }}</h3>
+                        <p class="price">{{ item.product.price|floatformat:2 }}</p>
+                        <p class="brand">{{ item.product.brand }}</p>
+                        <div class="action-buttons">
+                            {% comment %} {% for wishlist_item in wishlist_items %} {% endcomment %}
+                                <form action="{% url 'add_to_cart' item.product.id %}" method="POST">
+                                    {% csrf_token %}
+                                    <input type="number" name="quantity" value="1" min="1" max="3" class="form-control" style="width: 80px;">
+                                    <button type="submit" class="btn btn-primary">Add to Cart</button>
+                                </form>
+                            {% comment %} {% endfor %} {% endcomment %}
+                            
+                        </div>
+                    </div>
+                </div>
+            {% endfor %}
+        </div>
+    {% else %}
+        <div class="empty-wishlist">
+            <i class="fas fa-heart"></i>
+            <h2>Your wishlist is empty</h2>
+            <p>Add items you love to your wishlist. Review them anytime and easily move them to the cart.</p>
+            <a href="{% url 'index' %}" class="shop-btn">Continue Shopping</a>
+        </div>
+    {% endif %}
+</div>
+{% endblock %}

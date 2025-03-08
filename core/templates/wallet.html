@@ -1,0 +1,56 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="wallet-container">
+    <div class="wallet-balance">
+        <h2>Wallet Balance</h2>
+        <h3>₹{{ wallet.balance }}</h3>
+    </div>
+
+    <div class="wallet-actions">
+        <!-- Add Money Form -->
+        <form method="POST" action="{% url 'wallet' %}">
+            {% csrf_token %}
+            <input type="number" name="amount" placeholder="Enter amount" step="0.01" required>
+            <button type="submit">Add Money</button>
+        </form>
+
+        <!-- Withdraw Money Form -->
+        <form method="POST" action="{% url 'withdraw_money' %}">
+            {% csrf_token %}
+            <input type="number" name="amount" placeholder="Enter amount" step="0.01" required>
+            <button type="submit">Withdraw Money</button>
+        </form>
+    </div>
+
+    <div class="transaction-history">
+        <h3>Transaction History</h3>
+        <table>
+            <thead>
+                <tr>
+                    <th>Transaction ID</th>
+                    <th>Type</th>
+                    <th>Amount</th>
+                    <th>Status</th>
+                    <th>Date</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for transaction in transactions %}
+                <tr>
+                    <td>{{ transaction.transaction_id }}</td>
+                    <td>{{ transaction.transaction_type }}</td>
+                    <td>₹{{ transaction.amount }}</td>
+                    <td>{{ transaction.status }}</td>
+                    <td>{{ transaction.created_at|date:"d M Y H:i" }}</td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="5">No transactions found</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

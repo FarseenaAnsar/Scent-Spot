@@ -1,0 +1,207 @@
+body{
+    background-image: url('../images/loginpage.jpg'); 
+}
+
+
+form {
+    
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+    max-width: 500px;
+    margin: 40px auto;
+    padding: 30px;
+    background-color: #fff;
+    border-radius: 8px;
+    box-shadow: 0 2px 15px rgba(0,0,0,0.08);
+}
+
+/* Alert Styling */
+.alert {
+    padding: 12px 20px;
+    border-radius: 4px;
+    margin-bottom: 20px;
+}
+
+.alert-warning {
+    background-color: #fff8f0;
+    border: 1px solid #ffe5cc;
+    color: #804000;
+}
+
+/* Form Groups */
+.form-group {
+    margin-bottom: 20px;
+}
+
+.form-group label {
+    display: block;
+    margin-bottom: 8px;
+    color: #000;
+    font-weight: 500;
+    font-size: 14px;
+}
+
+.form-control {
+    width: 100%;
+    padding: 12px;
+    border: 1px solid #e0e0e0;
+    border-radius: 4px;
+    font-size: 14px;
+    transition: all 0.3s ease;
+}
+
+.form-control:focus {
+    outline: none;
+    border-color: #000;
+    box-shadow: 0 0 0 2px rgba(0,0,0,0.1);
+}
+
+.form-control::placeholder {
+    color: #999;
+}
+
+/* Helper Text */
+.form-text {
+    display: block;
+    margin-top: 5px;
+    font-size: 12px;
+    color: #666;
+}
+
+/* Radio Buttons */
+.form-check {
+    margin-bottom: 15px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.form-check-input {
+    width: 18px;
+    height: 18px;
+    margin: 0;
+    cursor: pointer;
+    accent-color: #000;
+}
+
+.form-check-label {
+    font-size: 14px;
+    color: #333;
+    cursor: pointer;
+}
+
+/* Password Fields */
+input[type="password"] {
+    letter-spacing: 2px;
+}
+
+/* Submit Button */
+.submit-btn {
+    width: 100%;
+    padding: 14px;
+    background-color: #000;
+    color: #fff;
+    border: none;
+    border-radius: 4px;
+    font-size: 16px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-top: 20px;
+}
+
+.submit-btn:hover {
+    background-color: #333;
+    transform: translateY(-2px);
+}
+
+/* Terms Checkbox */
+.terms-check {
+    margin-top: 20px;
+}
+
+.terms-check .form-check-input {
+    width: 16px;
+    height: 16px;
+}
+
+.terms-check .form-check-label {
+    font-size: 13px;
+    color: #666;
+}
+
+/* Form Title */
+.form-title {
+    text-align: center;
+    margin-bottom: 30px;
+    color: #000;
+    font-size: 24px;
+    font-weight: 600;
+}
+
+/* Responsive Design */
+@media (max-width: 576px) {
+    form {
+        margin: 20px;
+        padding: 20px;
+    }
+
+    .form-control {
+        padding: 10px;
+    }
+
+    .submit-btn {
+        padding: 12px;
+    }
+}
+
+/* Additional Enhancements */
+.form-group:focus-within label {
+    color: #000;
+}
+
+.form-control:not(:placeholder-shown):valid {
+    border-color: #28a745;
+}
+
+.form-control:not(:placeholder-shown):invalid {
+    border-color: #dc3545;
+}
+
+/* Animation */
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+form {
+    animation: fadeIn 0.5s ease forwards;
+}
+
+/* Field Sets */
+.form-section {
+    border: none;
+    border-bottom: 1px solid #e0e0e0;
+    margin-bottom: 25px;
+    padding-bottom: 25px;
+}
+
+.form-section:last-child {
+    border-bottom: none;
+}
+
+/* Required Field Indicator */
+.required-field::after {
+    content: '*';
+    color: #dc3545;
+    margin-left: 4px;
+}

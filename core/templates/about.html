@@ -1,0 +1,65 @@
+{% extends "base.html" %}
+{% load static %}
+{% block css%}
+    <link href="static/css/about.css" rel="stylesheet" type="text/css">
+{% endblock %}
+{% block content %}
+<div class="about-container">
+    <!-- Hero Section -->
+    <section class="hero-section">
+        <div class="hero-content">
+            <h1>About {{ company_info.name }}</h1>
+            <p class="tagline">Your Destination for Luxury Fragrances</p>
+        </div>
+    </section>
+
+    <!-- Company Info Section -->
+    <section class="company-info">
+        <div class="info-wrapper">
+            <div class="mission-vision">
+                <div class="info-box">
+                    <h2>Our Mission</h2>
+                    <p>{{ company_info.mission }}</p>
+                </div>
+                <div class="info-box">
+                    <h2>Our Vision</h2>
+                    <p>{{ company_info.vision }}</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Features Section -->
+    <section class="features-section">
+        <h2>Why Choose Us</h2>
+        <div class="features-grid">
+            {% for feature in features %}
+            <div class="feature-card">
+                <i class="{{ feature.icon }}"></i>
+                <h3>{{ feature.title }}</h3>
+                <p>{{ feature.description }}</p>
+            </div>
+            {% endfor %}
+        </div>
+    </section>
+
+    <!-- Team Section -->
+    <section class="team-section">
+        <h2>Meet Our Team</h2>
+        <div class="team-grid">
+            {% for member in team_members %}
+            <div class="team-card">
+                <div class="member-image">
+                    <img src="{{ member.image }}" alt="{{ member.name }}">
+                </div>
+                <div class="member-info">
+                    <h3>{{ member.name }}</h3>
+                    <p class="position">{{ member.position }}</p>
+                    <p class="description">{{ member.description }}</p>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </section>
+</div>
+{% endblock %}

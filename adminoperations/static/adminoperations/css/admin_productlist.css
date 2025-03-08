@@ -1,0 +1,40 @@
+.product-thumbnail {
+    width: 50px;
+    height: 50px;
+    object-fit: cover;
+    border-radius: 4px;
+}
+
+.form-group {
+    margin-bottom: 1.5rem;
+}
+
+.invalid-feedback {
+    display: block;
+}
+
+.btn-group {
+    display: flex;
+    gap: 5px;
+}
+
+.card {
+    border: none;
+    margin-bottom: 1.5rem;
+}
+
+.input-group .btn {
+    z-index: 0;
+}
+
+.badge {
+    padding: 0.5em 1em;
+    border-radius: 30px;
+}
+
+.product-details {
+    background-color: #f8f9fc;
+    padding: 20px;
+    border-radius: 8px;
+    margin: 20px 0;
+}

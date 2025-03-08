@@ -1,0 +1,48 @@
+.card {
+    border: none;
+    margin-bottom: 1.5rem;
+}
+
+.card-header {
+    background-color: #f8f9fc;
+    border-bottom: 1px solid #e3e6f0;
+}
+
+.btn-group {
+    display: flex;
+    gap: 5px;
+}
+
+.table td, .table th {
+    vertical-align: middle;
+}
+
+.badge {
+    padding: 0.5em 1em;
+    border-radius: 30px;
+}
+
+.badge-success {
+    background-color: #1cc88a;
+}
+
+.badge-danger {
+    background-color: #e74a3b;
+}
+
+.form-control:focus {
+    border-color: #4e73df;
+    box-shadow: 0 0 0 0.2rem rgba(78, 115, 223, 0.25);
+}
+
+.alert {
+    border-radius: 0.35rem;
+}
+
+.btn {
+    border-radius: 0.35rem;
+}
+
+.invalid-feedback {
+    display: block;
+}

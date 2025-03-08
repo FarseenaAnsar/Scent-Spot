@@ -1,0 +1,28 @@
+/* static/css/coupon.css */
+
+.coupon-section {
+    margin: 20px 0;
+    padding: 20px;
+    border: 1px solid #ddd;
+    border-radius: 5px;
+}
+
+.coupon-section h3 {
+    margin-bottom: 15px;
+}
+
+.input-group {
+    display: flex;
+    gap: 10px;
+}
+
+.applied-coupon {
+    background: #f8f9fa;
+    padding: 15px;
+    border-radius: 5px;
+}
+
+.applied-coupon p {
+    color: #28a745;
+    margin-bottom: 10px;
+}

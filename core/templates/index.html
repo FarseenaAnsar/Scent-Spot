@@ -1,0 +1,123 @@
+{% extends "base.html" %}
+{% block css %}
+<link href="static/css/index.css" rel="stylesheet" type="text/css">
+{% endblock %}
+
+{% block content %}
+{% load cart %}
+      <br>
+      <div class="col">
+        <form action="/index" method="POST">
+          {% csrf_token %}
+          <div class="row-lg-3" style="display: flex; margin-left: 6%;">
+              <div class="dropdown col-md-3" style="display: flex;">
+                <a class="btn dropdown-toggle filter" href="#" role="button" id="dropdownMenuLink" data-bs-toggle="dropdown" aria-expanded="false">
+                  Fragrance Type
+                </a>
+                <ul class="dropdown-menu filter_list" aria-labelledby="dropdownMenuLink">
+                  {% for c in category %}
+                    <div style="display:flex;">
+                      <label class="dropdown-item" name="category" style="display:flex;">{{c}}</label>
+                      <input type="checkbox" class="dropdown-item" name="category" value="{{c}}" style="margin-top: 3%; height:18px; width:105px; margin-right: 4%;">
+                    </div>
+                  {% endfor %}
+                </ul>
+              </div>
+              <div class="dropdown col-md-3" style="display: flex;">
+                <a class="btn dropdown-toggle filter" href="#" role="button" id="dropdownMenuLink" data-bs-toggle="dropdown" aria-expanded="false">
+                  Gender
+                </a>
+                <ul class="dropdown-menu filter_list" aria-labelledby="dropdownMenuLink">
+                  {% for g in gender %}
+                    <div style="display:flex;">
+                      <label class="dropdown-item"  name="gender" style="display:flex;">{{g}}</label>
+                      <input type="checkbox" class="dropdown-item" name="gender" value="{{g}}" style="margin-top: 3%; height:18px;">
+                    </div>
+                  {% endfor %}
+                </ul>
+              </div>
+              <div class="dropdown col-md-3" style="display: flex;">
+                <a class="btn dropdown-toggle filter" href="#" role="button" id="dropdownMenuLink" data-bs-toggle="dropdown" aria-expanded="false">
+                  Brands
+                </a>
+                <ul class="dropdown-menu filter_list" aria-labelledby="dropdownMenuLink">
+                  {% for b in brands %}
+                    <div style="display:flex;">
+                      <label class="dropdown-item" style="display:flex;">{{b}}</label>
+                      <input type="checkbox" class="dropdown-item" name="brands" value="{{b}}" style="margin-top: 3%; height:18px; width:45px; margin-right: 4%;">
+                    </div>
+                  {% endfor %}
+                </ul>
+              </div>
+              <div class="dropdown col-md-3" style="display: flex;">
+                <a class="btn dropdown-toggle filter" href="#" role="button" id="dropdownMenuLink" data-bs-toggle="dropdown" aria-expanded="false">
+                  Sort By
+                </a>
+                <ul class="dropdown-menu filter_list">
+                  {% for s in sort %}
+                    <div style="display:flex;">
+                      <label class="dropdown-item" name="sort" style="display:flex;">{{s}}</label>
+                      <input type="checkbox" class="dropdown-item" name="sort" value="{{s}}" style="margin-top: 3%; height:18px;">
+                    </div>  
+                  {% endfor %}
+                </ul>
+              </div>
+          </div>
+          <br>
+          <div class="row-1" style="display: flex;">
+            <div class="col-10" style="display: flex; margin-left: 6%;">
+              {% if applied_filters %}
+                  {% for fil in applied_filters %}
+                      <p class="applied_filters">{{fil}}<p>
+                  {% endfor %}
+              {% endif %}
+            </div>
+            <input class="col-2 filbtn" type="submit">
+          </div>
+        </form>
+        <br>
+        <div id="products" class="row-lg-9">
+          <div class="row row-cols-3 p">
+            {% for p in products %}
+                <div class="card p_card" id="{{p.id}}">
+                    <div class="img_wrapper">
+                      <img class="card-img-top" style="max-height: 100%;" src="{{p.image.url}}" alt="Card Image" style="float:left">
+                      <p class="product_label"><i class="fas fa-compress-alt fa-lg"></i></p>
+                      <a class="product_btn" href="/products?product_id={{p.id}}">o</a>
+                    </div>
+                    <br>
+                    <div class="card-body">
+                        <p class="card-title p_name">{{p.name}}</p>
+                        <p class="card-text p_price">{{p.price|currency}}</p>
+                        <p class="card-text p_brand">{{p.brand}}</p>
+                        {% if p.rating != 0 %}
+                            {% for i in p.rating|loop_counter %}
+                                <i class="fas fa-star" style="color:rgb(255, 234, 0);"></i>
+                            {% endfor %}
+                        {% else %}
+                            {% for i in 5|loop_counter %}
+                                <i class="fas fa-star"></i>
+                            {% endfor %}
+                        {% endif %}
+                        
+                        <form  action="{% url 'add_to_cart' p.id %}" method="POST" class="d-flex flex-row p-1">
+                          {% csrf_token %}
+                          <input type="number" name="amount" value=1 max="3" min="1" class="form-control" />
+                          <input hidden type="text" class="btn btn-primary btn-sm" value="{{p.id}}" name="prdid">
+                          <input type="submit" class="btn btn-sm cartbtn" value="CART">
+                        </form>
+                    </div>
+                    {% if p|is_in_cart:request.session.cart %}
+                      <div class="card-footer p-0 row">
+                        <div class="text-center">{{p|is_in_cart:request.session.cart}} already in Cart</div>
+                      </div>
+                    {% endif %}
+                </div>
+            {% endfor %}
+          </div>
+        </div>
+      </div>
+    </div>
+    
+{% endblock %}
+

@@ -1,0 +1,124 @@
+{% extends "base.html" %}
+{%  load static %}
+{% block css%}
+    <link href="static/css/products.css" rel="stylesheet" type="text/css">
+{% endblock %}
+
+{% block content %}
+{% load cart %}
+    <div class="row flex">
+        <div class="row container">
+            <div class="col-4 pos">
+                <div class="img">
+                    <img class="card-img-top" src="{{product.image.url}}" alt="Card image cap">
+                </div>
+            </div>
+            <div class="card col-8 content">
+                <div class="card-body">
+                    <h1 class="card-text heading">{{product.name}}</h1>
+                    <p class="card-text size">({{product.size}})</p>
+                    <p class="card-text price">MRP: {{product.price|currency}}</p>
+                    <small class="tax">Inclusize of all taxes</small>
+                    <br>
+                    {% if product.rating is not None and product.rating != 0 %}
+                            {% for i in product.rating|loop_counter %}
+                                <i class="fas fa-star" style="color:rgb(255, 234, 0);"></i>
+                            {% endfor %}
+                        {% else %}
+                            {% for i in 5|loop_counter %}
+                                <i class="fas fa-star"></i>
+                            {% endfor %}
+                        {% endif %}
+                    <p class="card-text brand">{{product.brand}}</p>
+                    {% if product.gender == "women" %}
+                        <p class="card-text gen w_g flex">{{product.gender}}</p>
+                    {% else %}
+                        <p class="card-text gen m_g flex">{{product.gender}}</p>
+                    {% endif %}
+                    {% if cat_type == "Celebrity Scents" %}
+                        <p class="card-text flex celeb">EXCLUSIVE!!!</p>
+                        <p class="card-text flex type">{{cat_type}}</p>
+                    {% else %}
+                        <p class="card-text flex type">{{cat_type}}</p>
+                    {% endif %}
+                    <br>
+                    <form  action="/products" method="POST" class="d-flex flex-row p-1">
+                        {% csrf_token %}
+                        <input type="number" name="amount" value=1 max="10" min="1" class="form-control" />
+                        <input hidden type="text" class="btn btn-primary btn-sm" value="{{product.id}}" name="prdid">
+                        <input type="submit" class="btn btn-sm cartbtn" value="CART">
+                    </form>
+                    {% if product|is_in_cart:request.session.cart %}
+                      <div class="card-footer p-0 row">
+                        <div class="text-center">{{product|is_in_cart:request.session.cart}} already in Cart</div>
+                      </div>
+                    {% endif %}
+                </div>
+        </div>
+    </div>
+    <div class="row flex">
+        <div class="row container">
+            <div class="card col con_des">
+                <div class="card-body">
+                    <h1 class="card-text price">Product Description</h1>
+                    <br>
+                    <p class="card-text description">{{product.description}}</p>
+                </div>
+        </div>
+    </div>
+    <!-- Similar Products Section -->
+    <section class="similar-products">
+        <h3 class="section-title">Similar Products |</h3>
+        <div class="similar-products-grid">
+            {% for similar in similar_products %}
+                <div class="similar-product-card">
+                    <a class="product_btn" href="/products?product_id={{p.id}}">
+                      <img src="{{ similar.image.url }}" alt="{{ similar.name }}">    
+                        
+                        <div class="similar-product-info">
+                            <h4>{{ similar.name }}</h4>
+                            <p class="price">${{ similar.price }}</p>
+                        </div>
+                    </a>
+                </div>
+            {% endfor %}
+        </div>
+    </section>
+{% endblock %}
+{% block js %}
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Create overlay div
+            const overlay = document.createElement('div');
+            overlay.className = 'overlay';
+            document.body.appendChild(overlay);
+        
+            // Get all product images
+            const productImages = document.querySelectorAll('.card-img-top');
+        
+            productImages.forEach(img => {
+                img.addEventListener('click', function() {
+                    if (!this.classList.contains('zoomed')) {
+                        // Zoom in
+                        this.classList.add('zoomed');
+                        overlay.style.display = 'block';
+                    } else {
+                        // Zoom out
+                        this.classList.remove('zoomed');
+                        overlay.style.display = 'none';
+                    }
+                });
+            });
+        
+            // Close zoom when clicking overlay
+            overlay.addEventListener('click', function() {
+                const zoomedImage = document.querySelector('.zoomed');
+                if (zoomedImage) {
+                    zoomedImage.classList.remove('zoomed');
+                    overlay.style.display = 'none';
+                }
+            });
+        });
+        
+    </script>
+{% endblock %}
