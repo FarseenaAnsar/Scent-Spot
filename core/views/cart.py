@@ -6,6 +6,7 @@ from core.models.customer import Customer
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.contrib import messages
 from django.views.generic import View, ListView
+from django.db import transaction
 
 
 class Cart(LoginRequiredMixin, View):

@@ -17,6 +17,7 @@ urlpatterns = [
     path("check-out", checkout.CheckOut.as_view(), name="checkout"),
     
     path("proceed-to-pay", razorpay.razorpaycheck.as_view(), name="razorpaycheck"),
+    path("place-order",razorpay.PlaceOrder.as_view(), name="placeorder" ),
     path('payment-success/<str:payment_id>/', razorpay.PaymentSuccessView.as_view(), name='payment_success'),
     path('verify-payment/', razorpay.VerifyPaymentView.as_view(), name='verify_payment'),
 

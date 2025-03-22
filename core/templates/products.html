@@ -10,7 +10,26 @@
         <div class="row container">
             <div class="col-4 pos">
                 <div class="img">
-                    <img class="card-img-top" src="{{product.image.url}}" alt="Card image cap">
+                    <img class="card-img-top" src="{{product.image.url}}" alt="Card image cap" id="mainImage">
+                </div>
+                <!-- Additional images thumbnails -->
+                <div class="additional-images mt-3">
+                    <!-- Main image thumbnail -->
+                    <div class="thumb-container">
+                        <img src="{{product.image.url}}" 
+                            alt="Main image" 
+                            onclick="changeMainImage(this.src)"
+                            class="thumb-img">
+                    </div>
+                    <!-- Additional images -->
+                    {% for img in additional_images %}
+                    <div class="thumb-container">
+                        <img src="{{img.image.url}}" 
+                            alt="Additional image" 
+                            onclick="changeMainImage(this.src)"
+                            class="thumb-img">
+                    </div>
+                    {% endfor %}
                 </div>
             </div>
             <div class="card col-8 content">
@@ -37,9 +56,9 @@
                     {% endif %}
                     {% if cat_type == "Celebrity Scents" %}
                         <p class="card-text flex celeb">EXCLUSIVE!!!</p>
-                        <p class="card-text flex type">{{cat_type}}</p>
+                        <p class="card-text flex type">{{product.category.name}}</p>
                     {% else %}
-                        <p class="card-text flex type">{{cat_type}}</p>
+                        <p class="card-text flex type">{{product.category.name}}</p>
                     {% endif %}
                     <br>
                     <form  action="/products" method="POST" class="d-flex flex-row p-1">
@@ -86,39 +105,80 @@
     </section>
 {% endblock %}
 {% block js %}
-    <script>
-        document.addEventListener('DOMContentLoaded', function() {
-            // Create overlay div
-            const overlay = document.createElement('div');
-            overlay.className = 'overlay';
-            document.body.appendChild(overlay);
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Initialize main image switching functionality
+        initializeImageSwitching();
         
-            // Get all product images
-            const productImages = document.querySelectorAll('.card-img-top');
-        
-            productImages.forEach(img => {
-                img.addEventListener('click', function() {
-                    if (!this.classList.contains('zoomed')) {
-                        // Zoom in
-                        this.classList.add('zoomed');
-                        overlay.style.display = 'block';
-                    } else {
-                        // Zoom out
-                        this.classList.remove('zoomed');
-                        overlay.style.display = 'none';
-                    }
-                });
+        // Initialize zoom functionality
+        initializeZoom();
+    });
+
+    function initializeImageSwitching() {
+        const thumbnails = document.querySelectorAll('.thumb-img');
+        const mainImage = document.getElementById('mainImage');
+
+        thumbnails.forEach(thumb => {
+            thumb.addEventListener('click', function() {
+                // Change main image with fade effect
+                changeMainImage(this.src);
+                
+                // Update active thumbnail
+                updateActiveThumbnail(this);
             });
-        
-            // Close zoom when clicking overlay
-            overlay.addEventListener('click', function() {
-                const zoomedImage = document.querySelector('.zoomed');
-                if (zoomedImage) {
-                    zoomedImage.classList.remove('zoomed');
+        });
+    }
+
+    function changeMainImage(src) {
+        const mainImage = document.getElementById('mainImage');
+        mainImage.style.opacity = '0.5';
+        mainImage.src = src;
+        mainImage.onload = function() {
+            mainImage.style.opacity = '1';
+        };
+    }
+
+    function updateActiveThumbnail(clickedThumb) {
+        // Remove active border from all thumbnails
+        document.querySelectorAll('.thumb-container').forEach(container => {
+            container.style.borderColor = 'transparent';
+        });
+        // Add active border to clicked thumbnail
+        clickedThumb.parentElement.style.borderColor = '#333';
+    }
+
+    function initializeZoom() {
+        // Create overlay div
+        const overlay = document.createElement('div');
+        overlay.className = 'overlay';
+        document.body.appendChild(overlay);
+
+        // Get all product images
+        const productImages = document.querySelectorAll('.card-img-top');
+
+        productImages.forEach(img => {
+            img.addEventListener('click', function() {
+                if (!this.classList.contains('zoomed')) {
+                    // Zoom in
+                    this.classList.add('zoomed');
+                    overlay.style.display = 'block';
+                } else {
+                    // Zoom out
+                    this.classList.remove('zoomed');
                     overlay.style.display = 'none';
                 }
             });
         });
-        
-    </script>
+
+        // Close zoom when clicking overlay
+        overlay.addEventListener('click', function() {
+            const zoomedImage = document.querySelector('.zoomed');
+            if (zoomedImage) {
+                zoomedImage.classList.remove('zoomed');
+                overlay.style.display = 'none';
+            }
+        });
+    }
+</script>
+
 {% endblock %}

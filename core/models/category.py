@@ -10,7 +10,7 @@ class Category(models.Model):
 
     @staticmethod
     def get_category_type():
-        return Category.objects.values_list('name', flat=True)
+        return Category.objects.name if Category.objects.exists() else ''
 
 
 # class Category(models.Model):

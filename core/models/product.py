@@ -14,7 +14,7 @@ class Product(models.Model):
     gender = models.CharField(max_length=50, default="")
     size = models.CharField(max_length=50, default="")
     stock = models.IntegerField(default=0)
-    
+
     @staticmethod
     def get_product_by_id(id):
         return Product.objects.filter(id__in = id)
@@ -52,6 +52,7 @@ class Product(models.Model):
             return prds.order_by('price')
         elif (s == "High To Low"):
             return prds.order_by('-price')
+        
     @staticmethod
     def typee(fil, prds):
         return prds.filter(category__in = fil)
@@ -67,3 +68,8 @@ class Product(models.Model):
     @staticmethod
     def get_product(product_id):
         return Product.objects.filter(id=product_id)
+    
+
+class ProductImage(models.Model):
+    product = models.ForeignKey(Product, related_name='additional_images', on_delete=models.CASCADE)
+    image = models.ImageField(upload_to="images/additional/")

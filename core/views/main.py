@@ -1,6 +1,6 @@
 from django.shortcuts import render, redirect
 from django.views import View
-from core.models.product import Product
+from core.models.product import Product, ProductImage
 from core.models.brand import Brand
 
 class Main(View):
@@ -22,6 +22,7 @@ class Main(View):
             else:
                 celeb_brand.append(b)
         return render(request, "main.html", {"prds": p_show, "brands":brands, "celeb_brand": celeb_brand})
+    
     def post(self, request):
         pass
 

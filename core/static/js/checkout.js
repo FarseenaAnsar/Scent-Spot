@@ -16,6 +16,9 @@ $(document).ready(function(){
             $.ajax({
                 method: "POST",
                 url: "proceed-to-pay",
+                headers: {
+                    'X-CSRFToken': $('input[name="csrfmiddlewaretoken"]').val()
+                },
                 success: function(response){
                     //console.log(response.total)
                     var options = {
@@ -28,6 +31,30 @@ $(document).ready(function(){
                         //"order_id": "order_IluGWxBm9U8zJ8", //This is a sample Order ID. Pass the `id` obtained in the response of Step 1
                         "handler": function (response){
                             alert(response.razorpay_payment_id);
+                            data = {
+                                "fname" : fname,
+                                "email" : email,
+                                "phone" : phone,
+                                "address" : address,
+                                "total" : total,
+                                "payment_mode" : "Paid by Razorpay",
+                                "payment_id" : response.razorpay_payment_id,
+                                "csrfmiddlewaretoken" : $('input[name="csrfmiddlewaretoken"]').val()
+                            }
+                            $.ajax({
+                                method: "POST",
+                                url: "payment-success",
+                                data: data,
+                                headers: {
+                                    'X-CSRFToken': $('input[name="csrfmiddlewaretoken"]').val()
+                                },
+                                success: function(response){
+                                    swal("Congratulations!", response.status, "success").then((value) => {
+                                        window.location.href = '/payment-success/' + response.payment_id;
+                                    });
+                                }
+
+                            });
                             
                         },
                         "prefill": {

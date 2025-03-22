@@ -20,9 +20,9 @@ class Order(models.Model):
     date = models.DateField(default=timezone.now)
     status = models.TextField(max_length=50, choices=STATUS_CHOICES, default="received")
     rating = models.IntegerField(default=0, validators=[MinValueValidator(0),MaxValueValidator(5)])
-    payment_id = models.CharField(max_length=100)
-    order_id = models.CharField(max_length=100)
-    created_at = models.DateTimeField(auto_now_add=True)
+    payment_id = models.CharField(max_length=100,null=True,blank=True)
+    order_id = models.CharField(max_length=100,null=True,blank=True)
+    created_at = models.DateTimeField(default=timezone.now)
     
 
     @staticmethod

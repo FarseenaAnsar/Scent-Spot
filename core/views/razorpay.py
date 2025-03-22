@@ -89,6 +89,12 @@ class VerifyPaymentView(View):
         except Exception as e:
             return JsonResponse({'status': 'error', 'message': str(e)})
 
+class PlaceOrder(LoginRequiredMixin, View):
+    def get(self, request):
+        cart_items = CartItem.objects.filter(user=request.user).select_related('product')
+        total = sum(item.product.price * item.quantity for item in cart_items)
+        return render(request, 'razorpay.html', {'cart_items': cart_items, 'total': total})
+
 class PaymentSuccessView(LoginRequiredMixin, TemplateView):
     template_name = 'payment_success.html'
     
