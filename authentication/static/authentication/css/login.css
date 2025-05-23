@@ -7,6 +7,7 @@
 /* Background image styling */
 .bg-image {
     box-shadow: 0 0 15px rgba(0, 0, 0, 0.1);
+    
 }
 
 /* Form box styling */
@@ -198,4 +199,25 @@
     .btn-outline-primary-2 {
         padding: 0.5rem 1.5rem;
     }
+}
+/* Password field container styling */
+.password-field-container {
+    position: relative;
+    display: flex;
+    align-items: center;
+
+}
+
+.password-field-container input {
+    padding-right: 40px;
+    width: 100%;
+}
+
+.password-toggle {
+    position: absolute;
+    right: 10px;
+    top: 12px;
+    cursor: pointer;
+    color: #777;
+    z-index: 10;
 }

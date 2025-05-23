@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 {%  load static %}
 {% block css%}
-    <link href="static/css/products.css" rel="stylesheet" type="text/css">
+    <link href="{% static 'css/products.css' %}" rel="stylesheet" type="text/css">
 {% endblock %}
 
 {% block content %}
@@ -60,6 +60,17 @@
                     {% else %}
                         <p class="card-text flex type">{{product.category.name}}</p>
                     {% endif %}
+                    <div class="find-perfume-section">
+                        <div class="find-perfume-content">
+                            {% comment %} <h2>Not sure which perfume to choose?</h2> {% endcomment %}
+                            <p>Let our AI help you find your perfect scent match!</p>
+                            <a href="{% url 'perfume_finder' %}" class="find-perfume-link">
+                                <span class="icon">🔍</span>
+                                Find Your Perfect Perfume
+                            </a>
+                        </div>
+                    </div>
+                    
                     <br>
                     <form  action="/products" method="POST" class="d-flex flex-row p-1">
                         {% csrf_token %}
@@ -105,80 +116,80 @@
     </section>
 {% endblock %}
 {% block js %}
-<script>
-    document.addEventListener('DOMContentLoaded', function() {
-        // Initialize main image switching functionality
-        initializeImageSwitching();
-        
-        // Initialize zoom functionality
-        initializeZoom();
-    });
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Initialize main image switching functionality
+            initializeImageSwitching();
+            
+            // Initialize zoom functionality
+            initializeZoom();
+        });
 
-    function initializeImageSwitching() {
-        const thumbnails = document.querySelectorAll('.thumb-img');
-        const mainImage = document.getElementById('mainImage');
+        function initializeImageSwitching() {
+            const thumbnails = document.querySelectorAll('.thumb-img');
+            const mainImage = document.getElementById('mainImage');
 
-        thumbnails.forEach(thumb => {
-            thumb.addEventListener('click', function() {
-                // Change main image with fade effect
-                changeMainImage(this.src);
-                
-                // Update active thumbnail
-                updateActiveThumbnail(this);
+            thumbnails.forEach(thumb => {
+                thumb.addEventListener('click', function() {
+                    // Change main image with fade effect
+                    changeMainImage(this.src);
+                    
+                    // Update active thumbnail
+                    updateActiveThumbnail(this);
+                });
             });
-        });
-    }
+        }
 
-    function changeMainImage(src) {
-        const mainImage = document.getElementById('mainImage');
-        mainImage.style.opacity = '0.5';
-        mainImage.src = src;
-        mainImage.onload = function() {
-            mainImage.style.opacity = '1';
-        };
-    }
+        function changeMainImage(src) {
+            const mainImage = document.getElementById('mainImage');
+            mainImage.style.opacity = '0.5';
+            mainImage.src = src;
+            mainImage.onload = function() {
+                mainImage.style.opacity = '1';
+            };
+        }
 
-    function updateActiveThumbnail(clickedThumb) {
-        // Remove active border from all thumbnails
-        document.querySelectorAll('.thumb-container').forEach(container => {
-            container.style.borderColor = 'transparent';
-        });
-        // Add active border to clicked thumbnail
-        clickedThumb.parentElement.style.borderColor = '#333';
-    }
+        function updateActiveThumbnail(clickedThumb) {
+            // Remove active border from all thumbnails
+            document.querySelectorAll('.thumb-container').forEach(container => {
+                container.style.borderColor = 'transparent';
+            });
+            // Add active border to clicked thumbnail
+            clickedThumb.parentElement.style.borderColor = '#333';
+        }
 
-    function initializeZoom() {
-        // Create overlay div
-        const overlay = document.createElement('div');
-        overlay.className = 'overlay';
-        document.body.appendChild(overlay);
+        function initializeZoom() {
+            // Create overlay div
+            const overlay = document.createElement('div');
+            overlay.className = 'overlay';
+            document.body.appendChild(overlay);
 
-        // Get all product images
-        const productImages = document.querySelectorAll('.card-img-top');
+            // Get all product images
+            const productImages = document.querySelectorAll('.card-img-top');
 
-        productImages.forEach(img => {
-            img.addEventListener('click', function() {
-                if (!this.classList.contains('zoomed')) {
-                    // Zoom in
-                    this.classList.add('zoomed');
-                    overlay.style.display = 'block';
-                } else {
-                    // Zoom out
-                    this.classList.remove('zoomed');
+            productImages.forEach(img => {
+                img.addEventListener('click', function() {
+                    if (!this.classList.contains('zoomed')) {
+                        // Zoom in
+                        this.classList.add('zoomed');
+                        overlay.style.display = 'block';
+                    } else {
+                        // Zoom out
+                        this.classList.remove('zoomed');
+                        overlay.style.display = 'none';
+                    }
+                });
+            });
+
+            // Close zoom when clicking overlay
+            overlay.addEventListener('click', function() {
+                const zoomedImage = document.querySelector('.zoomed');
+                if (zoomedImage) {
+                    zoomedImage.classList.remove('zoomed');
                     overlay.style.display = 'none';
                 }
             });
-        });
-
-        // Close zoom when clicking overlay
-        overlay.addEventListener('click', function() {
-            const zoomedImage = document.querySelector('.zoomed');
-            if (zoomedImage) {
-                zoomedImage.classList.remove('zoomed');
-                overlay.style.display = 'none';
-            }
-        });
-    }
-</script>
+        }
+    </script>
 
 {% endblock %}

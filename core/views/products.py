@@ -4,6 +4,10 @@ from core.models.category import Category
 from core.models.rate import Rate
 from django.views import View
 from django.shortcuts import get_object_or_404
+from core.models.product import PerfumeAttributes
+import numpy as np
+from sklearn.preprocessing import MultiLabelBinarizer
+from sklearn.metrics.pairwise import cosine_similarity
 
 class Products(View):
     def post(self, request):
@@ -38,25 +42,27 @@ class Products(View):
         
     def get(self, request):
         product_id = request.GET.get("product_id")
-        p_obj = None
-        type2 = None
         
-        if product_id is not None:
-            product = get_object_or_404(Product, id=product_id)
-            p_obj = Product.get_product(product_id)
-            cat = p_obj[0].category
-            type2 = Category.get_category_type()
-            similar_products = product.get_similar_products()
-            additional_images = product.additional_images.all()
-            
-            return render(request, "products.html", {
-                "product": p_obj[0],
-                "cat_type": type2,
-                "similar_products": similar_products,
-                "additional_images": additional_images  # Adding additional images to context
-            })
-            
-        # If no product_id, show all products or redirect
+        if product_id:
+            try:
+                product = get_object_or_404(Product, id=product_id)
+                p_obj = Product.get_product(product_id)
+                cat = p_obj[0].category
+                type2 = Category.get_category_type()
+                similar_products = product.get_similar_products()
+                additional_images = product.additional_images.all()
+                
+                return render(request, "products.html", {
+                    "product": p_obj[0],
+                    "cat_type": type2,
+                    "similar_products": similar_products,
+                    "additional_images": additional_images
+                })
+            except (Product.DoesNotExist, ValueError):
+                # Handle invalid product_id
+                return redirect('products')
+                
+        # If no product_id, show all products
         products = Product.objects.all()
         products_with_images = []
         for product in products:
@@ -92,3 +98,59 @@ class Products(View):
                 )
             return redirect('products')
     
+
+class PerfumeFinder(View):
+    def get(self, request):
+        return render(request, 'perfume_finder.html')
+
+    def post(self, request):
+        # to Get user preferences from the form
+        preferences = {
+            'scent_family': request.POST.get('scent_family'),
+            'occasion': request.POST.get('occasion'),
+            'season': request.POST.get('season'),
+            'gender': request.POST.get('gender'),
+        }
+
+        # to Get all perfumes
+        perfumes = PerfumeAttributes.objects.all()
+
+        # to Create feature vectors
+        mlb = MultiLabelBinarizer()
+        
+        # to Convert perfume attributes to features
+        perfume_features = []
+        for perfume in perfumes:
+            features = [
+                perfume.scent_family.split(','),
+                perfume.occasion.split(','),
+                perfume.season.split(','),
+                perfume.gender.split(',')
+            ]
+            perfume_features.append([item for sublist in features for item in sublist])
+
+        # to Convert user preferences to features
+        user_features = [
+            preferences['scent_family'].split(','),
+            preferences['occasion'].split(','),
+            preferences['season'].split(','),
+            preferences['gender'].split(',')
+        ]
+        user_features = [item for sublist in user_features for item in sublist]
+
+        # to Transform features to binary matrix
+        X = mlb.fit_transform(perfume_features)
+        user_X = mlb.transform([user_features])
+
+        # Calculating similarity scores
+        similarities = cosine_similarity(user_X, X)[0]
+
+        # to Get top 5 recommendations
+        top_indices = np.argsort(similarities)[-5:][::-1]
+        recommended_perfumes = [perfumes[int(i)].product for i in top_indices]    # Converting np.int64 to regular Python int before indexing
+
+        return render(request, 'perfume_finder.html', {
+            'recommendations': recommended_perfumes
+        })
+        
+

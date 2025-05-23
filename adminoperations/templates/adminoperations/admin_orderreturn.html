@@ -2,215 +2,73 @@
 {% load static %}
 
 {% block content %}
-<div class="container-fluid">
-    <!-- Page Heading -->
-    <div class="d-sm-flex align-items-center justify-content-between mb-4">
-        <h1 class="h3 mb-0 text-gray-800">Return Request Management</h1>
-    </div>
-
-    <!-- Filters -->
-    <div class="card shadow mb-4">
-        <div class="card-header py-3">
-            <h6 class="m-0 font-weight-bold text-primary">Filter Returns</h6>
+<div class="container">
+    <h2>Process Return for Order #{{ return_request.order.id }}</h2>
+    
+    <div class="card mb-4">
+        <div class="card-header">
+            <h5>Order Information</h5>
         </div>
         <div class="card-body">
-            <form method="get" class="form-inline">
-                <div class="form-group mx-2">
-                    <label class="mr-2">Status:</label>
-                    <select name="status" class="form-control" onchange="this.form.submit()">
-                        <option value="">All Status</option>
+            <div class="row">
+                <div class="col-md-6">
+                    <p><strong>Customer:</strong> 
+                        {% if return_request.order.customer %}
+                            {{ return_request.order.customer.first_name }}
+                        {% else %}
+                            <span class="text-muted">No customer information</span>
+                        {% endif %}
+                    </p>
+                    <p><strong>Order Date:</strong> {{ return_request.order.date|date:"M d, Y" }}</p>
+                </div>
+                <div class="col-md-6">
+                    <p><strong>Product:</strong> 
+                        {% if return_request.order.product %}
+                            {{ return_request.order.product.name }}
+                        {% else %}
+                            <span class="text-muted">No product information</span>
+                        {% endif %}
+                    </p>
+                    <p><strong>Price:</strong> ${{ return_request.order.price }}</p>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="card mb-4">
+        <div class="card-header">
+            <h5>Return Request</h5>
+        </div>
+        <div class="card-body">
+            <p><strong>Status:</strong> {{ return_request.get_status_display }}</p>
+            <p><strong>Reason:</strong> {{ return_request.reason }}</p>
+            
+            <form method="post">
+                {% csrf_token %}
+                <div class="form-group">
+                    <label for="id_admin_notes">Admin Notes:</label>
+                    <textarea name="admin_notes" id="id_admin_notes" class="form-control" rows="3">{{ return_request.admin_notes|default:'' }}</textarea>
+                </div>
+                
+                <div class="form-group">
+                    <label for="id_status">Status:</label>
+                    <select name="status" id="id_status" class="form-control">
                         {% for status_code, status_label in status_choices %}
-                        <option value="{{ status_code }}" {% if status_filter == status_code %}selected{% endif %}>
-                            {{ status_label }}
-                        </option>
+                            <option value="{{ status_code }}" {% if return_request.status == status_code %}selected{% endif %}>
+                                {{ status_label }}
+                            </option>
                         {% endfor %}
                     </select>
+                </div>
+                
+                <div class="mt-4">
+                    <button type="submit" name="action" value="approve" class="btn btn-success mr-2">Approve Return</button>
+                    <button type="submit" name="action" value="reject" class="btn btn-danger mr-2">Reject Return</button>
+                    <button type="submit" name="action" value="complete" class="btn btn-primary">Mark as Completed</button>
+                    <a href="{% url 'admin_order_list' %}" class="btn btn-secondary ml-2">Back to Orders</a>
                 </div>
             </form>
         </div>
     </div>
-
-    <!-- Returns List -->
-    <div class="card shadow mb-4">
-        <div class="card-header py-3">
-            <h6 class="m-0 font-weight-bold text-primary">Return Requests</h6>
-        </div>
-        <div class="card-body">
-            <div class="table-responsive">
-                <table class="table table-bordered" id="returnsTable" width="100%" cellspacing="0">
-                    <thead>
-                        <tr>
-                            <th>Return ID</th>
-                            <th>Order ID</th>
-                            <th>Customer</th>
-                            <th>Date Requested</th>
-                            <th>Reason</th>
-                            <th>Status</th>
-                            <th>Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for return in returns %}
-                        <tr>
-                            <td>#{{ return.id }}</td>
-                            <td>#{{ return.order.id }}</td>
-                            <td>{{ return.order.customer.first_name }}</td>
-                            <td>{{ return.processed_data|date:"M d, Y" }}</td>
-                            <td>{{ return.reason }}</td>
-                            <td>
-                                <span class="badge badge-{{ return.status }}">
-                                    {{ return.get_status_display }}
-                                </span>
-                            </td>
-                            <td>
-                                <button type="button" class="btn btn-sm btn-info" 
-                                        data-toggle="modal" 
-                                        data-target="#returnModal{{ return.id }}">
-                                    View Details
-                                </button>
-                            </td>
-                        </tr>
-
-                        <!-- Return Details Modal -->
-                        <div class="modal fade" id="returnModal{{ return.id }}" tabindex="-1" role="dialog">
-                            <div class="modal-dialog modal-lg" role="document">
-                                <div class="modal-content">
-                                    <div class="modal-header">
-                                        <h5 class="modal-title">Return Request #{{ return.id }}</h5>
-                                        <button type="button" class="close" data-dismiss="modal">
-                                            <span>&times;</span>
-                                        </button>
-                                    </div>
-                                    <div class="modal-body">
-                                        <div class="row">
-                                            <div class="col-md-6">
-                                                <h6>Return Details</h6>
-                                                <p><strong>Reason:</strong> {{ return.reason }}</p>
-                                                <p><strong>Description:</strong> {{ return.description }}</p>
-                                                <p><strong>Condition:</strong> {{ return.get_condition_display }}</p>
-                                                <p><strong>Preferred Solution:</strong> {{ return.get_preferred_solution_display }}</p>
-                                            </div>
-                                            <div class="col-md-6">
-                                                <h6>Product Images</h6>
-                                                <div class="return-images">
-                                                    {% for image in return.images.all %}
-                                                    <img src="{{ image.image.url }}" class="img-thumbnail m-1" style="max-width: 100px;">
-                                                    {% empty %}
-                                                    <p>No images uploaded</p>
-                                                    {% endfor %}
-                                                </div>
-                                            </div>
-                                        </div>
-
-                                        {% if return.status == 'pending' %}
-                                        <form method="post" class="mt-4">
-                                            {% csrf_token %}
-                                            <input type="hidden" name="return_id" value="{{ return.id }}">
-                                            
-                                            <div class="form-group">
-                                                <label>Admin Notes</label>
-                                                <textarea name="admin_notes" class="form-control" rows="3"></textarea>
-                                            </div>
-
-                                            <div class="btn-group">
-                                                <button type="submit" name="action" value="approve" 
-                                                        class="btn btn-success">
-                                                    Approve Return
-                                                </button>
-                                                <button type="submit" name="action" value="reject" 
-                                                        class="btn btn-danger">
-                                                    Reject Return
-                                                </button>
-                                            </div>
-                                        </form>
-                                        {% elif return.status == 'approved' %}
-                                        <form method="post" class="mt-4">
-                                            {% csrf_token %}
-                                            <input type="hidden" name="return_id" value="{{ return.id }}">
-                                            
-                                            <div class="form-group">
-                                                <label>Additional Notes</label>
-                                                <textarea name="admin_notes" class="form-control" rows="3"></textarea>
-                                            </div>
-
-                                            <button type="submit" name="action" value="complete" 
-                                                    class="btn btn-primary">
-                                                Mark as Completed
-                                            </button>
-                                        </form>
-                                        {% else %}
-                                        <div class="mt-4">
-                                            <h6>Admin Notes:</h6>
-                                            <p>{{ return.admin_notes|default:"No notes available" }}</p>
-                                            <p><strong>Processed Date:</strong> {{ return.processed_date|date:"M d, Y H:i" }}</p>
-                                        </div>
-                                        {% endif %}
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                        {% empty %}
-                        <tr>
-                            <td colspan="7" class="text-center">No return requests found.</td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-            </div>
-
-            <!-- Pagination -->
-            {% if is_paginated %}
-            <nav aria-label="Page navigation" class="mt-4">
-                <ul class="pagination justify-content-center">
-                    {% if page_obj.has_previous %}
-                    <li class="page-item">
-                        <a class="page-link" href="?page={{ page_obj.previous_page_number }}{% if status_filter %}&status={{ status_filter }}{% endif %}">Previous</a>
-                    </li>
-                    {% endif %}
-
-                    {% for num in page_obj.paginator.page_range %}
-                    <li class="page-item {% if page_obj.number == num %}active{% endif %}">
-                        <a class="page-link" href="?page={{ num }}{% if status_filter %}&status={{ status_filter }}{% endif %}">{{ num }}</a>
-                    </li>
-                    {% endfor %}
-
-                    {% if page_obj.has_next %}
-                    <li class="page-item">
-                        <a class="page-link" href="?page={{ page_obj.next_page_number }}{% if status_filter %}&status={{ status_filter }}{% endif %}">Next</a>
-                    </li>
-                    {% endif %}
-                </ul>
-            </nav>
-            {% endif %}
-        </div>
-    </div>
 </div>
-
-{% block extra_css %}
-<style>
-    .badge-pending { background-color: #f6c23e; }
-    .badge-approved { background-color: #1cc88a; color: white; }
-    .badge-rejected { background-color: #e74a3b; color: white; }
-    .badge-completed { background-color: #4e73df; color: white; }
-    
-    .return-images {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 10px;
-    }
-</style>
-{% endblock %}
-
-{% block extra_js %}
-<script>
-    $(document).ready(function() {
-        $('#returnsTable').DataTable({
-            "order": [[ 3, "desc" ]],
-            "pageLength": 10,
-            "searching": true
-        });
-    });
-</script>
-{% endblock %}
-
 {% endblock %}

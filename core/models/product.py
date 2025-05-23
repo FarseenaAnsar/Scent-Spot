@@ -73,3 +73,17 @@ class Product(models.Model):
 class ProductImage(models.Model):
     product = models.ForeignKey(Product, related_name='additional_images', on_delete=models.CASCADE)
     image = models.ImageField(upload_to="images/additional/")
+    
+    
+
+
+class PerfumeAttributes(models.Model):
+    product = models.OneToOneField(Product, on_delete=models.CASCADE)
+    scent_family = models.CharField(max_length=50)  # e.g., Floral, Woody, Oriental
+    notes_top = models.CharField(max_length=200)    # e.g., Citrus, Bergamot
+    notes_middle = models.CharField(max_length=200)  # e.g., Rose, Jasmine
+    notes_base = models.CharField(max_length=200)   # e.g., Vanilla, Musk
+    occasion = models.CharField(max_length=100)     # e.g., Casual, Formal, Evening
+    season = models.CharField(max_length=50)        # e.g., Summer, Winter
+    longevity = models.CharField(max_length=50)     # e.g., Long-lasting, Moderate
+    gender = models.CharField(max_length=50)        # e.g., Unisex, Feminine, Masculine

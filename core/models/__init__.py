@@ -8,3 +8,4 @@ from .cart import CartItem
 from .category import Category
 from .return_request import ReturnRequest
 from .wallet import Wallet
+from .coupon import Coupon

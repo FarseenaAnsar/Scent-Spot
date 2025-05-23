@@ -11,8 +11,15 @@ class Category(models.Model):
     @staticmethod
     def get_category_type():
         return Category.objects.name if Category.objects.exists() else ''
+        
+    @staticmethod
+    def get_category_type2(cat):
+        return cat.name if cat else ''
 
-
+    @staticmethod
+    def get_category_type2(cat):
+        return cat.name if cat else ''
+    
 # class Category(models.Model):
 #     id = models.IntegerField(primary_key=True)
 #     class Type1(models.IntegerChoices):

@@ -339,8 +339,8 @@
     position: fixed;
     top: 0;
     left: 0;
-    width: 50%;
-    height: 50%;
+    width: 100%;
+    height: 100%;
     background-color: rgba(0, 0, 0, 0.7);
     z-index: 999;
 }
@@ -432,3 +432,92 @@
 }
 
 
+/* Find Your Perfume Section Styles */
+.find-perfume-section {
+    margin:10px 0;
+    /* padding: 30px 20px */
+    background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+    border-radius: 12px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.find-perfume-content {
+    max-width: 600px;
+    margin: 0 auto;
+}
+
+.find-perfume-content h2 {
+    color: #333;
+    font-size: 24px;
+    margin-bottom: 15px;
+}
+
+.find-perfume-content p {
+    color: #666;
+    font-size: 16px;
+    margin-bottom: 20px;
+}
+
+.find-perfume-link {
+    display: inline-flex;
+    align-items: center;
+    padding: 12px 25px;
+    background: #f3f5f6;
+    color: rgb(13, 13, 13);
+    text-decoration: none;
+    border-radius: 25px;
+    font-weight: 500;
+    transition: all 0.3s ease;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+.find-perfume-link:hover {
+    background: #0056b3;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+    color: white;
+    text-decoration: none;
+}
+
+.find-perfume-link .icon {
+    margin-right: 2px;
+    font-size: 20px;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+    .find-perfume-section {
+        margin: 20px 0;
+        padding: 20px 15px;
+    }
+
+    .find-perfume-content h2 {
+        font-size: 20px;
+    }
+
+    .find-perfume-content p {
+        font-size: 14px;
+    }
+
+    .find-perfume-link {
+        padding: 10px 20px;
+        font-size: 14px;
+    }
+}
+
+/* Optional: Animation */
+@keyframes pulse {
+    0% {
+        transform: scale(1);
+    }
+    50% {
+        transform: scale(1.05);
+    }
+    100% {
+        transform: scale(1);
+    }
+}
+
+.find-perfume-link:active {
+    animation: pulse 0.3s ease-in-out;
+}

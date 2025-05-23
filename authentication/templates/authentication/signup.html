@@ -12,11 +12,34 @@
 
 
 {% block content %}
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.7.2/font/bootstrap-icons.css">
+<script>
+function togglePasswordVisibility(fieldName) {
+    const passwordField = document.querySelector(`input[name="${fieldName}"]`);
+    const toggleIcon = document.getElementById(`toggle${fieldName}`);
+    
+    if (passwordField.type === 'password') {
+        passwordField.type = 'text';
+        toggleIcon.classList.remove('bi-eye-slash');
+        toggleIcon.classList.add('bi-eye');
+    } else {
+        passwordField.type = 'password';
+        toggleIcon.classList.remove('bi-eye');
+        toggleIcon.classList.add('bi-eye-slash');
+    }
+}
+</script>
+
+
 <main class="signup-container">
     <div class="split-layout">
         <!-- Left side with image -->
-        <div class="left-side">
-            <img src="{% static 'authentication/images/login.avif' %}" alt="Welcome Image" class="welcome-image">
+        <div class="col-md-6 p-0">
+            <div class="bg-image h-100" style="background-image: url('{% static 'authentication/images/login.avif' %}');
+                background-size: contain;
+                background-position: center;
+                background-repeat: no-repeat;">
+            </div>
         </div>
         
         <!-- Right side with form -->
@@ -48,7 +71,16 @@
                             {% for field in form %}
                                 <div class="form-group">
                                     {{ field.label_tag }}
-                                    {{ field }}
+                                    {% if field.html_name == "password1" or field.html_name == "password2" %}
+                                        <div class="password-field-container">
+                                            {{ field }}
+                                            <span style="position: absolute; right: 10px; top: 50%; transform: translateY(-50%); cursor: pointer; z-index: 999;" class="password-toggle" onclick="togglePasswordVisibility('{{ field.html_name }}')">
+                                                <i class="bi bi-eye-slash" id="toggle{{ field.html_name }}"></i>
+                                            </span>
+                                        </div>
+                                    {% else %}
+                                        {{ field }}
+                                    {% endif %}
                                     {% if field.errors %}
                                         <div class="error">
                                             {{ field.errors }}

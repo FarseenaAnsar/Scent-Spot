@@ -17,7 +17,7 @@ from core.forms import CustomerProfileForm
 
 class Account(LoginRequiredMixin, View):
     template_name = 'account.html'
-    login_url = '/login'
+    login_url = '/user_login/'
     form_class = CustomerProfileForm
 
     def get(self, request):

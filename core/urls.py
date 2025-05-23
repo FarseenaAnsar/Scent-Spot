@@ -30,6 +30,7 @@ urlpatterns = [
     path("profile", profile.Profile.as_view(), name="profile"),
     path("products", products.Products.as_view(), name="products"),
     path('products/<int:product_id>/', products.Products.as_view(), name='product_detail'),
+    path('find-perfume/', products.PerfumeFinder.as_view(), name='perfume_finder'),
     path("wishlist", wishlist.WishlistView.as_view(), name="wishlist"),
     path('add-to-wishlist/<int:product_id>/', wishlist.AddToWishlistView.as_view(), name='add_to_wishlist'),
     path('remove-from-wishlist/<int:product_id>/', wishlist.RemoveFromWishlistView.as_view(), name='remove_from_wishlist'),

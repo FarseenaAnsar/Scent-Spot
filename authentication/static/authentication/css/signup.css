@@ -18,22 +18,11 @@
 }
 
 /* Left side styling */
-.left-side {
-    flex: 1;
-    position: relative;
-    overflow: hidden;
+.bg-image {
+    box-shadow: 0 0 15px rgba(0, 0, 0, 0.1);
+    
 }
 
-.welcome-image {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-    transition: transform 0.3s ease;
-}
-
-.left-side:hover .welcome-image {
-    transform: scale(1.05);
-}
 
 /* Right side styling */
 .right-side {
@@ -69,6 +58,30 @@
     background: linear-gradient(45deg, #2196F3, #00BCD4);
     color: white;
     box-shadow: 0 5px 15px rgba(33, 150, 243, 0.3);
+}
+
+/* Password field container styling */
+.password-field-container {
+    position: relative;
+}
+
+.password-field-container input {
+    width: 100%;
+    padding-right: 40px;
+}
+
+.password-toggle {
+    position: absolute;
+    right: 10px;
+    top: 50%;
+    transform: translateY(-50%);
+    cursor: pointer;
+    color: #777;
+    z-index: 10;
+}
+
+.password-toggle:hover {
+    color: #0d6efd;
 }
 
 /* Form styling */

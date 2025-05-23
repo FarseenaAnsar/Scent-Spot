@@ -33,20 +33,20 @@ class ProductForm(forms.ModelForm):
         
         if self.cleaned_data.get('image'):
             image_file = self.cleaned_data['image']
-            # Define the path where you want to save the image
-            css_dir = os.path.join(settings.BASE_DIR, 'static' 'css', 'images')
+            # to define the path where you want to save the image
+            images_dir = os.path.join(settings.BASE_DIR, 'core', 'static', 'images')
     
             # Create directory if it doesn't exist
-            os.makedirs(css_dir, exist_ok=True)
+            os.makedirs(images_dir, exist_ok=True)
             
             # Save the image
-            file_path = os.path.join(css_dir, image_file.name)
+            file_path = os.path.join(images_dir, image_file.name)
             with open(file_path, 'wb+') as destination:
                 for chunk in image_file.chunks():
                     destination.write(chunk)
             
             # Save the image path to the model
-            instance.image = f'css/images/{image_file.name}'
+            instance.image = f'static/images/{image_file.name}'
         
         if commit:
             instance.save()
