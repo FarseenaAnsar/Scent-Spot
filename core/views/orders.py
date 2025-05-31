@@ -4,6 +4,8 @@ from core.models.order import Order
 from core.models.rate import Rate
 from core.models.customer import Customer
 from core.models.product import Product
+from core.models.wishlist import Wishlist
+from django.contrib import messages
 
 class OrderView(View):
     def get(self, request):
@@ -69,4 +71,16 @@ class OrderView(View):
         elif (val == "NOT NOW"):
             return render(request, "orders.html", {"order":o, "my_class":"hide_class"})
         
-    
+    def create_order(self, request, cart_items, order):
+        # Create order items from cart items
+        for item in cart_items:
+            # Your existing code to create order items
+            
+            # Remove products from wishlist
+            Wishlist.objects.filter(user=request.user, product=item.product).delete()
+        
+        # Clear the cart
+        cart_items.delete()
+        
+        messages.success(request, "Order placed successfully!")
+        return redirect("orders")

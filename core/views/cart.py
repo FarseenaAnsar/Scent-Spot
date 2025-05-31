@@ -2,6 +2,7 @@ from django.shortcuts import render, redirect, get_object_or_404
 from django.views import View
 from core.models.product import Product
 from core.models.cart import CartItem
+from core.models.wishlist import Wishlist
 from core.models.customer import Customer
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.contrib import messages
@@ -58,6 +59,11 @@ class AddToCartView(LoginRequiredMixin, View):
             product = get_object_or_404(Product, id=product_id)
             quantity = int(request.POST.get('quantity', 1))
             
+            # Check if product is in stock
+            if product.stock < 1:
+                messages.error(request, f"{product.name} is out of stock!")
+                return redirect(request.META.get('HTTP_REFERER', 'cart'))
+            
             cart_item, created = CartItem.objects.get_or_create(
                 user=request.user,
                 product=product,
@@ -70,6 +76,9 @@ class AddToCartView(LoginRequiredMixin, View):
                 messages.success(request, 'Cart updated successfully!')
             else:
                 messages.success(request, 'Item added to your cart!')
+            
+            # Remove from wishlist if present
+            Wishlist.objects.filter(user=request.user, product=product).delete()
             
             return redirect('cart')
         except Exception as e:

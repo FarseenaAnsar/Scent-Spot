@@ -11,6 +11,9 @@
             <div class="col-4 pos">
                 <div class="img">
                     <img class="card-img-top" src="{{product.image.url}}" alt="Card image cap" id="mainImage">
+                    {% if out_of_stock or product.stock < 1 %}
+                        <div class="out-of-stock-overlay">Out of Stock</div>
+                    {% endif %}
                 </div>
                 <!-- Additional images thumbnails -->
                 <div class="additional-images mt-3">
@@ -72,16 +75,22 @@
                     </div>
                     
                     <br>
-                    <form  action="/products" method="POST" class="d-flex flex-row p-1">
-                        {% csrf_token %}
-                        <input type="number" name="amount" value=1 max="10" min="1" class="form-control" />
-                        <input hidden type="text" class="btn btn-primary btn-sm" value="{{product.id}}" name="prdid">
-                        <input type="submit" class="btn btn-sm cartbtn" value="CART">
-                    </form>
-                    {% if product|is_in_cart:request.session.cart %}
-                      <div class="card-footer p-0 row">
-                        <div class="text-center">{{product|is_in_cart:request.session.cart}} already in Cart</div>
-                      </div>
+                    {% if out_of_stock or product.stock < 1 %}
+                        {% comment %} <div class="out-of-stock-label"></div> {% endcomment %}
+                        <button class="btn btn-sm cartbtn" disabled>Add to Cart</button>
+                        {% comment %} <button class="btn btn-sm wishlistbtn" disabled>Add to Wishlist</button> {% endcomment %}
+                    {% else %}
+                        <form action="/products" method="POST" class="d-flex flex-row p-1">
+                            {% csrf_token %}
+                            <input type="number" name="amount" value=1 max="{{ product.stock }}" min="1" class="form-control" />
+                            <input hidden type="text" class="btn btn-primary btn-sm" value="{{product.id}}" name="prdid">
+                            <input type="submit" class="btn btn-sm cartbtn" value="CART">
+                        </form>
+                        {% if product|is_in_cart:request.session.cart %}
+                        <div class="card-footer p-0 row">
+                            <div class="text-center">{{product|is_in_cart:request.session.cart}} already in Cart</div>
+                        </div>
+                        {% endif %}
                     {% endif %}
                 </div>
         </div>

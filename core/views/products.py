@@ -8,6 +8,7 @@ from core.models.product import PerfumeAttributes
 import numpy as np
 from sklearn.preprocessing import MultiLabelBinarizer
 from sklearn.metrics.pairwise import cosine_similarity
+from django.contrib import messages
 
 class Products(View):
     def post(self, request):
@@ -24,21 +25,40 @@ class Products(View):
             similar_products = product.get_similar_products()
             additional_images = product.additional_images.all()   #aditional images
             
-            cart = request.session.get("cart", {})  # Default to empty dict if no cart
-            q = cart.get(prd_id, 0)  # Default to 0 if product not in cart
-            q = int(q) + int(amt) if q else int(amt)
-            cart[prd_id] = q
-            request.session["cart"] = cart
+            # Check if product is in stock
+            if product.stock < 1:
+                messages.error(request, f"{product.name} is out of stock!")
+                return render(request, "products.html", {
+                    "product": p_obj[0],
+                    "cat_type": type2,
+                    "similar_products": similar_products,
+                    "additional_images": additional_images,
+                    "out_of_stock": True
+                })
+            
+            # If in stock, proceed with adding to cart
+            cart = request.session.get("cart", {})
+            q = cart.get(prd_id, 0)
+            
+            # Check if adding more would exceed available stock
+            if int(q) + int(amt) > product.stock:
+                messages.warning(request, f"Only {product.stock} items available in stock!")
+                amt = product.stock - int(q) if int(q) < product.stock else 0
+                
+            if int(amt) > 0:
+                q = int(q) + int(amt) if q else int(amt)
+                cart[prd_id] = q
+                request.session["cart"] = cart
             
             return render(request, "products.html", {
                 "product": p_obj[0],
                 "cat_type": type2,
                 "similar_products": similar_products,
-                "additional_images": additional_images  # Adding additional images to context
+                "additional_images": additional_images,
+                "out_of_stock": product.stock < 1
             })
         
-        # If no product_id, redirect to products list or show error
-        return redirect('products')  # or wherever you want to redirect
+        return redirect('products')
         
     def get(self, request):
         product_id = request.GET.get("product_id")
@@ -56,7 +76,8 @@ class Products(View):
                     "product": p_obj[0],
                     "cat_type": type2,
                     "similar_products": similar_products,
-                    "additional_images": additional_images
+                    "additional_images": additional_images,
+                    "out_of_stock": product.stock < 1
                 })
             except (Product.DoesNotExist, ValueError):
                 # Handle invalid product_id
@@ -69,7 +90,8 @@ class Products(View):
             additional_images = product.additional_images.all()
             products_with_images.append({
                 'product': product,
-                'additional_images': additional_images
+                'additional_images': additional_images,
+                'out_of_stock': product.stock < 1
             })
         return render(request, "products.html", {"products": products_with_images})
 
@@ -82,7 +104,8 @@ class Products(View):
             additional_images = product.additional_images.all()
             products_data.append({
                 'product': product,
-                'additional_images': additional_images
+                'additional_images': additional_images,
+                'out_of_stock': product.stock < 1
             })
             print(f"Product: {product.name}, Rating: {product.rating}")
         return render(request, 'main.html', {'prds': products_data})

@@ -1,6 +1,6 @@
 # views.py
 from django.views import View
-from django.shortcuts import render, redirect
+from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.contrib import messages
 from django.utils import timezone
@@ -11,6 +11,7 @@ from core.models.return_request import ReturnRequest
 from core.models.wishlist import Wishlist
 from core.models.wallet import Wallet
 from core.models.customer import Customer
+from core.models.address import Address
 # from core.models.ordermanage import Ordermanage
 # from core.models.wallet import WalletView
 from core.forms import CustomerProfileForm
@@ -21,19 +22,74 @@ class Account(LoginRequiredMixin, View):
     form_class = CustomerProfileForm
 
     def get(self, request):
+        # Create form instance with customer data
+        try:
+            customer = Customer.objects.get(email=request.user.username)
+        except Customer.DoesNotExist:
+            # Create a new customer if one doesn't exist
+            customer = Customer.objects.create(
+                email=request.user.username,
+                first_name=request.user.first_name,
+                last_name=request.user.last_name
+            )
+        
+        form = self.form_class(instance=customer)
         context = self.get_context_data()
+        context['form'] = form
         return render(request, self.template_name, context)
 
     def post(self, request):
         action = request.POST.get('action')
         order_id = request.POST.get('order_id')
+        form = None  # Initialize form variable
 
         if action == 'cancel':
             return self.cancel_order(request, order_id)
         elif action == 'return':
             return self.return_order(request, order_id)
+        elif action == 'add_address':
+            return self.add_address(request)
+        elif action == 'edit_address':
+            return self.edit_address(request)
+        elif action == 'delete_address':
+            return self.delete_address(request)
+        elif action == 'set_default_address':
+            return self.set_default_address(request)
         
-        return redirect('account')
+        # Handle form submission for profile update
+        try:
+            customer = Customer.objects.get(email=request.user.username)
+        except Customer.DoesNotExist:
+            # Create a new customer if one doesn't exist
+            customer = Customer.objects.create(
+                email=request.user.username,
+                first_name=request.user.first_name,
+                last_name=request.user.last_name
+            )
+        
+        form = self.form_class(request.POST, instance=customer)
+        if form.is_valid():
+            form.save()
+            
+            # Handle password change if provided
+            if form.cleaned_data.get('new_password'):
+                if form.cleaned_data['new_password'] != form.cleaned_data['confirm_password']:
+                    messages.error(request, 'New passwords do not match!')
+                elif not request.user.check_password(form.cleaned_data['current_password']):
+                    messages.error(request, 'Current password is incorrect!')
+                else:
+                    request.user.set_password(form.cleaned_data['new_password'])
+                    request.user.save()
+                    messages.success(request, 'Profile and password updated successfully!')
+            else:
+                messages.success(request, 'Profile updated successfully!')
+            
+            return redirect('account')
+        
+        # If we get here, there was an error
+        context = self.get_context_data()
+        context['form'] = form
+        return render(request, self.template_name, context)
 
     def form_valid(self, form):
         if form.cleaned_data.get('new_password'):
@@ -51,17 +107,15 @@ class Account(LoginRequiredMixin, View):
         
         return super().form_valid(form)
 
-    
     def get_context_data(self, **kwargs):
-        
         try:
-        # Get all required data for the account page
-            
+            # Get all required data for the account page
             customer = Customer.objects.get(email=self.request.user.username)
             orders = Order.objects.filter(customer=customer).order_by('-date')
             wishlist = Wishlist.objects.filter(user=self.request.user)
             wallet = Wallet.objects.filter(user=self.request.user).first()
             return_requests = ReturnRequest.objects.filter(order__customer=customer)
+            addresses = Address.objects.filter(customer=customer)
 
             return {
                 'customer': customer,
@@ -69,6 +123,7 @@ class Account(LoginRequiredMixin, View):
                 'wishlist': wishlist,
                 'wallet': wallet,
                 'return_requests': return_requests,
+                'addresses': addresses,
                 'user': self.request.user
             }
         except Customer.DoesNotExist:
@@ -84,8 +139,72 @@ class Account(LoginRequiredMixin, View):
                 'wishlist': Wishlist.objects.filter(user=self.request.user),
                 'wallet': Wallet.objects.filter(user=self.request.user).first(),
                 'return_requests': [],
+                'addresses': [],
                 'user': self.request.user
             }
+
+    def add_address(self, request):
+        customer = Customer.objects.get(email=request.user.username)
+        is_default = request.POST.get('is_default') == 'on'
+        
+        # If this is the first address or set as default, unset other defaults
+        if is_default:
+            Address.objects.filter(customer=customer, is_default=True).update(is_default=False)
+        
+        Address.objects.create(
+            customer=customer,
+            address_line1=request.POST.get('address_line1'),
+            address_line2=request.POST.get('address_line2', ''),
+            city=request.POST.get('city'),
+            state=request.POST.get('state'),
+            postal_code=request.POST.get('postal_code'),
+            is_default=is_default
+        )
+        messages.success(request, 'Address added successfully!')
+        return redirect('account')
+
+    def edit_address(self, request):
+        address_id = request.POST.get('address_id')
+        address = get_object_or_404(Address, id=address_id)
+        is_default = request.POST.get('is_default') == 'on'
+        
+        # If setting as default, unset other defaults
+        if is_default and not address.is_default:
+            Address.objects.filter(customer=address.customer, is_default=True).update(is_default=False)
+        
+        # Update address fields
+        address.address_line1 = request.POST.get('address_line1')
+        address.address_line2 = request.POST.get('address_line2', '')
+        address.city = request.POST.get('city')
+        address.state = request.POST.get('state')
+        address.postal_code = request.POST.get('postal_code')
+        address.is_default = is_default
+        address.save()
+        
+        messages.success(request, 'Address updated successfully!')
+        return redirect('account')
+
+    def delete_address(self, request):
+        address_id = request.POST.get('address_id')
+        address = get_object_or_404(Address, id=address_id)
+        address.delete()
+        messages.success(request, 'Address deleted successfully!')
+        return redirect('account')
+
+    def set_default_address(self, request):
+        customer = Customer.objects.get(email=request.user.username)
+        address_id = request.POST.get('address_id')
+        
+        # Unset all default addresses
+        Address.objects.filter(customer=customer, is_default=True).update(is_default=False)
+        
+        # Set the selected address as default
+        address = get_object_or_404(Address, id=address_id)
+        address.is_default = True
+        address.save()
+        
+        messages.success(request, 'Default address updated successfully!')
+        return redirect('account')
 
     def cancel_order(self, request, order_id):
         try:

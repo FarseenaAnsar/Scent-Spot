@@ -62,4 +62,16 @@ class CheckOut(LoginRequiredMixin, View):
                 "type": False, 
                 "cart_items": cart_items
             })
-
+    def checkout(self, request):
+        # Your existing order creation code
+        customer = request.user
+        cart_items = CartItem.objects.filter(user=customer)
+        
+        # Create the order
+        order = Order.objects.create(
+            customer=customer,
+            # other order fields
+        )
+        
+        # Call the method to create order items and clean up wishlist
+        return self.create_order(request, cart_items, order)

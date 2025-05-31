@@ -23,7 +23,7 @@ def user_login(request):
     if request.user.is_authenticated:
         if request.user.is_staff:
             return redirect('admin_login')
-        return redirect('home')
+        return redirect('main')
         
     if request.method == 'POST':
         form = AuthenticationForm(request, data=request.POST)
