@@ -75,7 +75,7 @@
         <h3>Have a coupon?</h3>
         {% if request.session.coupon_id %}
             <div class="applied-coupon">
-                <p>Coupon applied! Discount: ${{ request.session.discount|floatformat:2 }}</p>
+                <p>Coupon applied! Discount: ₹{{ request.session.discount|floatformat:2 }}</p>
                 <form action="{% url 'remove_coupon' %}" method="POST">
                     {% csrf_token %}
                     <button type="submit" class="btn btn-danger">Remove Coupon</button>
@@ -95,11 +95,11 @@
 
     <div class="cart-summary">
         <h4>Order Summary</h4>
-        <p>Subtotal: ${{ cart_total|floatformat:2 }}</p>
+        <p>Subtotal: ₹{{ cart_total|floatformat:2 }}</p>
         {% if request.session.discount %}
-            <p>Discount: -${{ request.session.discount|floatformat:2 }}</p>
+            <p>Discount: -₹{{ request.session.discount|floatformat:2 }}</p>
         {% endif %}
-        <p>Total: ${{ final_total|floatformat:2 }}</p>
+        <p>Total: ₹{{ final_total|floatformat:2 }}</p>
     </div>
 
     <div class="d-flex justify-content-between mt-4">

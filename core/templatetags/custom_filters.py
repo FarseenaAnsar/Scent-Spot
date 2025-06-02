@@ -27,3 +27,15 @@ def split(value, delimiter):
     Returns a list of strings, split by delimiter
     """
     return value.split(delimiter)
+
+@register.filter
+def multiply(value, arg):
+    return value * arg
+
+@register.filter
+def subtract(value, arg):
+    return float(value) - float(arg)
+
+@register.filter
+def sum(value, arg):
+    return float(value) + float(arg)

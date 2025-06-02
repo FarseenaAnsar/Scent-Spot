@@ -18,7 +18,7 @@ class ApplyCouponView(View):
                 discount = coupon.calculate_discount(cart_total)
                 request.session['coupon_id'] = coupon.id
                 request.session['discount'] = float(discount)
-                messages.success(request, f"Coupon applied successfully! You saved ${discount:.2f}")
+                messages.success(request, f"Coupon applied successfully! You saved ₹{discount:.2f}")
             else:
                 messages.error(request, message)
                 

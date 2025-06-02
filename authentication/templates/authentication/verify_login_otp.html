@@ -1,0 +1,52 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block content %}
+<main class="container-fluid">
+    <div class="row min-vh-100">
+        <!-- Left side - Image -->
+        <div class="col-md-6 p-0">
+            <div class="bg-image h-100" style="background-image: url('{% static 'authentication/images/login.avif' %}');
+                background-size: contain;
+                background-position: center;
+                background-repeat: no-repeat;">
+            </div>
+        </div>
+
+        <!-- Right side - OTP Form -->
+        <div class="col-md-6 d-flex align-items-center">
+            <div class="form-box w-100 px-4">
+                <div class="form-tab">
+                    <h4 class="text-center mb-4">Verify OTP</h4>
+                    
+                    {% if messages %}
+                        <div class="messages">
+                            {% for message in messages %}
+                            <div class="alert {% if message.tags %}alert-{{ message.tags }}{% endif %}">
+                                {{ message }}
+                            </div>
+                            {% endfor %}
+                        </div>
+                    {% endif %}
+                    
+                    <p class="text-center">Please enter the OTP sent to your email</p>
+                    
+                    <form method="post" action="{% url 'verify_login_otp' %}">
+                        {% csrf_token %}
+                        <div class="form-group">
+                            <label for="otp">OTP</label>
+                            <input type="text" name="otp" id="otp" class="form-control" required>
+                        </div>
+                        
+                        <div class="form-footer text-center mt-4">
+                            <button type="submit" class="btn btn-outline-primary-2">
+                                <span>Verify OTP</span>
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</main>
+{% endblock %}

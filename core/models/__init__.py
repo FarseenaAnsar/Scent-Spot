@@ -10,3 +10,4 @@ from .return_request import ReturnRequest
 from .wallet import Wallet
 from .coupon import Coupon
 from .address import Address
+from .order import OrderItem

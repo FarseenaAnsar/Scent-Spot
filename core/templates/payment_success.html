@@ -1,12 +1,185 @@
 {% extends 'base.html' %}
-
+{% load custom_filters %}
 {% block content %}
+<div id="congratsPopup" class="congrats-popup">
+  <div class="congrats-content">
+    <span class="close-btn">&times;</span>
+    <h2>Congratulations!</h2>
+    <p>Your order has been placed successfully.</p>
+    <div class="confetti"></div>
+  </div>
+</div>
+
+<style>
+  .congrats-popup {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0,0,0,0.5);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 1000;
+  }
+  
+  .congrats-content {
+    background-color: white;
+    padding: 30px;
+    border-radius: 10px;
+    text-align: center;
+    position: relative;
+    box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+    max-width: 400px;
+    animation: popIn 0.5s;
+  }
+  
+  @keyframes popIn {
+    0% { transform: scale(0.5); opacity: 0; }
+    100% { transform: scale(1); opacity: 1; }
+  }
+  
+  .close-btn {
+    position: absolute;
+    top: 10px;
+    right: 15px;
+    font-size: 24px;
+    cursor: pointer;
+  }
+  
+  .congrats-content h2 {
+    color: #28a745;
+    margin-bottom: 15px;
+  }
+  
+  .confetti {
+    width: 100%;
+    height: 100px;
+    background: linear-gradient(90deg, #ff0000, #ff7700, #ffff00, #00ff00, #0000ff, #8b00ff);
+    background-size: 600% 600%;
+    animation: confettiBackground 5s ease infinite;
+    border-radius: 5px;
+    margin-top: 20px;
+  }
+  
+  @keyframes confettiBackground {
+    0% { background-position: 0% 50%; }
+    50% { background-position: 100% 50%; }
+    100% { background-position: 0% 50%; }
+  }
+</style>
+
+<script>
+  document.addEventListener('DOMContentLoaded', function() {
+    // Show popup when page loads
+    const popup = document.getElementById('congratsPopup');
+    
+    // Close popup when clicking the X
+    const closeBtn = document.querySelector('.close-btn');
+    closeBtn.addEventListener('click', function() {
+      popup.style.display = 'none';
+    });
+    
+    // Close popup when clicking outside
+    window.addEventListener('click', function(event) {
+      if (event.target === popup) {
+        popup.style.display = 'none';
+      }
+    });
+    
+    // Auto close after 5 seconds
+    setTimeout(function() {
+      popup.style.display = 'none';
+    }, 5000);
+  });
+</script>
+
 <div class="container mt-5">
     {% if error %}
         <div class="alert alert-danger">
             {{ error }}
         </div>
+    {% elif is_cod %}
+        <div class="card">
+            <div class="card-body">
+                <h2 class="card-title text-success">
+                    <i class="fas fa-check-circle"></i> Order Placed Successfully!
+                </h2>
+                
+                <div class="order-details mt-4">
+                    <h4>Order Details</h4>
+                    <p><strong>Payment ID:</strong> {{ payment_id }}</p>
+                    <p><strong>Date:</strong> {{ orders.0.created_at|date:"F d, Y" }}</p>
+                    <p><strong>Payment Method:</strong> Cash on Delivery</p>
+                </div>
+
+                <div class="order-items mt-4">
+                    <h4>Ordered Items</h4>
+                    <table class="table">
+                        <thead>
+                            <tr>
+                                <th>Product</th>
+                                <th>Quantity</th>
+                                <th>Price</th>
+                                <th>Subtotal</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for order in orders %}
+                            <tr>
+                                <td>{{ order.product.name }}</td>
+                                <td>{{ order.quantity }}</td>
+                                <td>₹{{ order.price }}</td>
+                                <td>₹{{ order.quantity|multiply:order.price }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                    
+                    <div class="order-summary mt-3">
+                        <div class="row">
+                            <div class="col-md-6 offset-md-6">
+                                <table class="table">
+                                    <tr>
+                                        <th>Subtotal:</th>
+                                        <td>₹{{ subtotal }}</td>
+                                    </tr>
+                                    {% if discount %}
+                                    <tr>
+                                        <th>Discount:</th>
+                                        <td>-₹{{ discount }}</td>
+                                    </tr>
+                                    {% endif %}
+                                    <tr>
+                                        <th>Convenience Fee:</th>
+                                        <td>₹99</td>
+                                    </tr>
+                                    <tr class="table-active">
+                                        <th>Total:</th>
+                                        <td>₹{{ total }}</td>
+                                    </tr>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="shipping-details mt-4">
+                    <h4>Shipping Details</h4>
+                    <p><strong>Name:</strong> {{ orders.0.customer.first_name }}</p>
+                    <p><strong>Email:</strong> {{ orders.0.customer.email }}</p>
+                    <p><strong>Shipping Address:</strong> {{ orders.0.adress }}</p>
+                </div>
+
+                <div class="text-center mt-4">
+                    <a href="{% url 'main' %}" class="btn btn-primary">Continue Shopping</a>
+                    <a href="#" class="btn btn-secondary" onclick="window.print()">Print Receipt</a>
+                </div>
+            </div>
+        </div>
     {% else %}
+        <!-- Similar changes for non-COD orders -->
         <div class="card">
             <div class="card-body">
                 <h2 class="card-title text-success">
@@ -18,7 +191,6 @@
                     <p><strong>Order ID:</strong> {{ order.order_id }}</p>
                     <p><strong>Payment ID:</strong> {{ order.payment_id }}</p>
                     <p><strong>Date:</strong> {{ order.created_at|date:"F d, Y" }}</p>
-                    <p><strong>Total Amount:</strong> ₹{{ order.price }}</p>
                 </div>
 
                 <div class="order-items mt-4">
@@ -43,13 +215,40 @@
                             {% endfor %}
                         </tbody>
                     </table>
+                    
+                    <div class="order-summary mt-3">
+                        <div class="row">
+                            <div class="col-md-6 offset-md-6">
+                                <table class="table">
+                                    <tr>
+                                        <th>Subtotal:</th>
+                                        <td>₹{{ subtotal }}</td>
+                                    </tr>
+                                    {% if discount %}
+                                    <tr>
+                                        <th>Discount:</th>
+                                        <td>-₹{{ discount }}</td>
+                                    </tr>
+                                    {% endif %}
+                                    <tr>
+                                        <th>Convenience Fee:</th>
+                                        <td>₹99</td>
+                                    </tr>
+                                    <tr class="table-active">
+                                        <th>Total:</th>
+                                        <td>₹{{ total }}</td>
+                                    </tr>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
                 </div>
 
                 <div class="shipping-details mt-4">
                     <h4>Shipping Details</h4>
                     <p><strong>Name:</strong> {{ order.customer.first_name }}</p>
                     <p><strong>Email:</strong> {{ order.customer.email }}</p>
-                    <p><strong>Shipping Address:</strong> {{ order.address }}</p>
+                    <p><strong>Shipping Address:</strong> {{ order.adress }}</p>
                 </div>
 
                 <div class="text-center mt-4">

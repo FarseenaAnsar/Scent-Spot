@@ -33,10 +33,15 @@ def user_login(request):
             user = authenticate(username=username, password=password)
             
             if user is not None:
-                login(request, user)
-                if user.is_staff:
-                    return redirect('admin_login')
-                return redirect('main')
+                # Generate OTP and store in session
+                otp = random.randint(100000, 999999)
+                request.session['login_otp'] = str(otp)
+                request.session['login_username'] = username
+                request.session['login_password'] = password
+                
+                # For development: display OTP in message instead of sending email
+                messages.success(request, f"Your OTP is: {otp} (For development only)")
+                return redirect('verify_login_otp')
             else:
                 messages.error(request, 'Invalid username or password.')
         else:
@@ -45,6 +50,37 @@ def user_login(request):
         form = AuthenticationForm()
     
     return render(request, 'authentication/login.html', {'form': form})
+
+
+def verify_login_otp(request):
+    if request.method == 'POST':
+        entered_otp = request.POST.get('otp')
+        sent_otp = request.session.get('login_otp')
+        username = request.session.get('login_username')
+        password = request.session.get('login_password')
+        
+        if str(entered_otp) == str(sent_otp):
+            user = authenticate(request, username=username, password=password)
+            if user is not None:
+                login(request, user)
+                
+                # Clean up session
+                del request.session['login_otp']
+                del request.session['login_username']
+                del request.session['login_password']
+                
+                if user.is_staff:
+                    return redirect('admin_login')
+                return redirect('main')
+            else:
+                messages.error(request, 'Authentication failed.')
+                return redirect('login')
+        else:
+            messages.error(request, 'Invalid OTP. Please try again.')
+            return redirect('verify_login_otp')
+    
+    return render(request, 'authentication/verify_login_otp.html')
+
 
 
 @cache_control(no_cache=True, must_revalidate=True, no_store=True)
@@ -65,13 +101,9 @@ def user_signup(request):
     if request.method == 'POST':
         form = CustomUserCreationForm(request.POST)
         if form.is_valid():
-            user = form.save()  # Remove commit=False since we don't need to modify the user
-            username = form.cleaned_data.get('username')
-            password = form.cleaned_data.get('password1')
-            user = authenticate(username=username, password=password)
-            if user is not None:
-                login(request, user)
-                return redirect('login')
+            form.save()  # Remove commit=False since we don't need to modify the user
+            messages.success(request, 'Account created successfully! Please log in.')
+            return redirect('login')
         else:
             for error in form.errors.values():
                 messages.error(request, error)

@@ -104,6 +104,16 @@
                     </div>
                 </form>
             </section>
+            <section id="debug" class="content-section">
+                <h3>Debug Info</h3>
+                <p>Customer Email: {{ customer.email }}</p>
+                <p>Customer ID: {{ customer.id }}</p>
+                <p>Orders Count: {{ orders|length }}</p>
+                {% if orders %}
+                    <p>First Order ID: {{ orders.0.id }}</p>
+                    <p>First Order Customer ID: {{ orders.0.customer.id }}</p>
+                {% endif %}
+            </section>
 
             <section id="orders" class="content-section">
                 <div class="account-section orders-section">
@@ -118,7 +128,11 @@
                                         <span class="order-status {{ order.status|lower }}">{{ order.status }}</span>
                                     </div>
                                     <div class="order-details">
-                                        <p class="order-total">Total: ${{ order.total_amount|floatformat:2 }}</p>
+                                        <p><strong>Product:</strong> {{ order.product.name }}</p>
+                                        <p><strong>Quantity:</strong> {{ order.quantity }}</p>
+                                        <p><strong>Price:</strong> ₹{{ order.product.price }}</p>
+                                        <p><strong>Total:</strong> ₹{{ order.quantity|multiply:order.product.price }}</p>
+                                        <p><strong>Address:</strong> {{ order.adress }}</p>
                                         
                                         {% if order.status == 'PENDING' or order.status == 'PROCESSING' %}
                                             <form method="POST" class="order-actions">
@@ -126,16 +140,6 @@
                                                 <input type="hidden" name="action" value="cancel">
                                                 <input type="hidden" name="order_id" value="{{ order.id }}">
                                                 <button type="submit" class="btn btn-danger">Cancel Order</button>
-                                            </form>
-                                        {% endif %}
-            
-                                        {% if order.status == 'DELIVERED' and order.delivered_at|timesince|split:' '|first|add:"0" <= 7 %}
-                                            <form method="POST" class="order-actions">
-                                                {% csrf_token %}
-                                                <input type="hidden" name="action" value="return">
-                                                <input type="hidden" name="order_id" value="{{ order.id }}">
-                                                <input type="text" name="return_reason" placeholder="Reason for return" required>
-                                                <button type="submit" class="btn btn-warning">Request Return</button>
                                             </form>
                                         {% endif %}
                                     </div>
@@ -147,6 +151,7 @@
                     {% endif %}
                 </div>
             </section>
+
 
             <section id="address" class="content-section">
                 <h3>Address Book</h3>

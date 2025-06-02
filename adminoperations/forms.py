@@ -3,6 +3,8 @@ from core.models.category import Category
 from core.models.product import Product
 import os
 from django.conf import settings
+from PIL import Image
+import uuid
 
 class CategoryForm(forms.ModelForm):
     class Meta:
@@ -12,7 +14,10 @@ class CategoryForm(forms.ModelForm):
 class ProductForm(forms.ModelForm):
     category = forms.CharField(max_length=100)
     image = forms.ImageField(widget=forms.ClearableFileInput(attrs={'class': 'form-control'}))
-    
+    crop_x = forms.FloatField(widget=forms.HiddenInput(), required=False)
+    crop_y = forms.FloatField(widget=forms.HiddenInput(), required=False)
+    crop_width = forms.FloatField(widget=forms.HiddenInput(), required=False)
+    crop_height = forms.FloatField(widget=forms.HiddenInput(), required=False)    
     GENDER_CHOICES = [
         ('M', 'Male'),
         ('F', 'Female'),
@@ -33,20 +38,47 @@ class ProductForm(forms.ModelForm):
         
         if self.cleaned_data.get('image'):
             image_file = self.cleaned_data['image']
-            # to define the path where you want to save the image
+            # Generate unique filename to avoid overwriting
+            file_ext = os.path.splitext(image_file.name)[1]
+            unique_filename = f"{uuid.uuid4()}{file_ext}"
+            
+            # Define the path where you want to save the image
             images_dir = os.path.join(settings.BASE_DIR, 'core', 'static', 'images')
-    
+            
             # Create directory if it doesn't exist
             os.makedirs(images_dir, exist_ok=True)
             
-            # Save the image
-            file_path = os.path.join(images_dir, image_file.name)
-            with open(file_path, 'wb+') as destination:
+            # Save the original image temporarily
+            temp_path = os.path.join(images_dir, f"temp_{unique_filename}")
+            with open(temp_path, 'wb+') as destination:
                 for chunk in image_file.chunks():
                     destination.write(chunk)
             
+            # Process image with PIL
+            img = Image.open(temp_path)
+            
+            # Apply cropping if crop parameters are provided
+            crop_x = self.cleaned_data.get('crop_x')
+            crop_y = self.cleaned_data.get('crop_y')
+            crop_width = self.cleaned_data.get('crop_width')
+            crop_height = self.cleaned_data.get('crop_height')
+            
+            if all([crop_x is not None, crop_y is not None, 
+                   crop_width is not None, crop_height is not None]):
+                img = img.crop((int(crop_x), int(crop_y), 
+                               int(crop_x + crop_width), 
+                               int(crop_y + crop_height)))
+            
+            # Save the processed image
+            final_path = os.path.join(images_dir, unique_filename)
+            img.save(final_path)
+            
+            # Remove temp file
+            if os.path.exists(temp_path):
+                os.remove(temp_path)
+            
             # Save the image path to the model
-            instance.image = f'static/images/{image_file.name}'
+            instance.image = f'static/images/{unique_filename}'
         
         if commit:
             instance.save()

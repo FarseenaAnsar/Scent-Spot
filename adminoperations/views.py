@@ -23,6 +23,16 @@ from django.db.models import Q, F
 from .forms import ProductForm
 from django.utils import timezone  
 
+class StaffRequiredMixin(LoginRequiredMixin):
+    """Mixin that requires the user to be staff"""
+    
+    def dispatch(self, request, *args, **kwargs):
+        if not request.user.is_staff:
+            messages.error(request, "You don't have permission to access this page.")
+            return redirect('main')  # Redirect to main page if not staff
+        return super().dispatch(request, *args, **kwargs)
+
+
 class AdminLoginView(LoginView):
     template_name = 'adminoperations/admin_login.html'
     success_url = reverse_lazy('admin_home')
@@ -49,7 +59,14 @@ class AdminLoginView(LoginView):
             return redirect(self.get_success_url())
         return super().get(request, *args, **kwargs)
 
-class AdminLogoutView(LoginRequiredMixin, LogoutView):
+    def dispatch(self, request, *args, **kwargs):
+        # Check if user is already logged in but not staff
+        if request.user.is_authenticated and not request.user.is_staff:
+            messages.error(request, "You don't have permission to access this page.")
+            return redirect('main')
+        return super().dispatch(request, *args, **kwargs)
+
+class AdminLogoutView(StaffRequiredMixin, LogoutView):
     next_page = reverse_lazy('admin_login')
     
     def dispatch(self, request, *args, **kwargs):
@@ -63,7 +80,7 @@ class AdminLogoutView(LoginRequiredMixin, LogoutView):
         """
         return str(self.next_page)
     
-class AdminHomeView(LoginRequiredMixin, TemplateView):
+class AdminHomeView(StaffRequiredMixin, TemplateView):
     template_name = 'adminoperations/admin_home.html'
     
     def get_context_data(self, **kwargs):
@@ -85,7 +102,7 @@ class AdminHomeView(LoginRequiredMixin, TemplateView):
         
         return context
 
-class UserListView(LoginRequiredMixin, ListView):
+class UserListView(StaffRequiredMixin, ListView):
     model = Customer
     template_name = 'adminoperations/admin_userlist.html'
     context_object_name = 'users'
@@ -106,7 +123,7 @@ class UserListView(LoginRequiredMixin, ListView):
         context['users_data'] = users_data
         return context
 
-class UserDetailView(LoginRequiredMixin, DetailView):
+class UserDetailView(StaffRequiredMixin, DetailView):
     model = Customer
     template_name = 'adminoperations/admin_userdetails.html'
     context_object_name = 'user'
@@ -130,7 +147,7 @@ class UserDetailView(LoginRequiredMixin, DetailView):
         
         return context
 
-class CategoryListView(LoginRequiredMixin, ListView):
+class CategoryListView(StaffRequiredMixin, ListView):
     model = Category
     template_name = 'adminoperations/admin_categorylist.html'
     context_object_name = 'categories'
@@ -141,7 +158,7 @@ class CategoryListView(LoginRequiredMixin, ListView):
         context['total_categories'] = Category.objects.count()
         return context
 
-class CategoryCreateView(LoginRequiredMixin, CreateView):
+class CategoryCreateView(StaffRequiredMixin, CreateView):
     model = Category
     template_name = 'adminoperations/admin_categoryform.html'
     form_class = CategoryForm
@@ -151,7 +168,7 @@ class CategoryCreateView(LoginRequiredMixin, CreateView):
         messages.success(self.request, 'Category created successfully!')
         return super().form_valid(form)
 
-class CategoryUpdateView(LoginRequiredMixin, UpdateView):
+class CategoryUpdateView(StaffRequiredMixin, UpdateView):
     model = Category
     template_name = 'adminoperations/admin_categoryform.html'
     fields = ['name','description']  
@@ -160,7 +177,7 @@ class CategoryUpdateView(LoginRequiredMixin, UpdateView):
     def get_success_url(self):
         return reverse('category_list')
 
-class CategoryDeleteView(LoginRequiredMixin, DeleteView):
+class CategoryDeleteView(StaffRequiredMixin, DeleteView):
     model = Category
     template_name = 'adminoperations/admin_categorydelete.html'
     success_url = reverse_lazy('category_list')
@@ -170,7 +187,7 @@ class CategoryDeleteView(LoginRequiredMixin, DeleteView):
         return super().delete(request, *args, **kwargs)
 
 
-class ProductListView(LoginRequiredMixin, ListView):
+class ProductListView(StaffRequiredMixin, ListView):
     model = Product
     template_name = 'adminoperations/admin_productlist.html'
     context_object_name = 'products'
@@ -198,7 +215,7 @@ class ProductListView(LoginRequiredMixin, ListView):
         context['selected_category'] = self.request.GET.get('category')
         return context
 
-class ProductCreateView(LoginRequiredMixin, CreateView):
+class ProductCreateView(StaffRequiredMixin, CreateView):
     model = Product
     form_class = ProductForm
     template_name = 'adminoperations/admin_productform.html'
@@ -215,7 +232,7 @@ class ProductCreateView(LoginRequiredMixin, CreateView):
         messages.success(self.request, 'Product created successfully!')
         return HttpResponseRedirect(self.get_success_url())
 
-class ProductUpdateView(LoginRequiredMixin, UpdateView):
+class ProductUpdateView(StaffRequiredMixin, UpdateView):
     model = Product
     form_class = ProductForm
     template_name = 'adminoperations/admin_productform.html'
@@ -232,7 +249,7 @@ class ProductUpdateView(LoginRequiredMixin, UpdateView):
         messages.success(self.request, 'Product updated successfully!')
         return response
 
-class ProductDeleteView(LoginRequiredMixin, DeleteView):
+class ProductDeleteView(StaffRequiredMixin, DeleteView):
     model = Product
     template_name = 'adminoperations/admin_productdelete.html'
     success_url = reverse_lazy('product_list')
@@ -244,7 +261,7 @@ class ProductDeleteView(LoginRequiredMixin, DeleteView):
         return response
     
     
-class AdminOrderListView(LoginRequiredMixin, ListView):
+class AdminOrderListView(StaffRequiredMixin, ListView):
     model = Order
     template_name = 'adminoperations/admin_orderlist.html'
     context_object_name = 'orders'
@@ -267,7 +284,7 @@ class AdminOrderListView(LoginRequiredMixin, ListView):
         return context
 
 
-class AdminOrderDetailView(LoginRequiredMixin, DetailView):
+class AdminOrderDetailView(StaffRequiredMixin, DetailView):
     model = Order
     template_name = 'adminoperations/admin_orderdetail.html'
     context_object_name = 'order'
@@ -278,7 +295,7 @@ class AdminOrderDetailView(LoginRequiredMixin, DetailView):
         return Order.objects.all().order_by('-created_at')  # Sort by newest first
     
 
-class AdminOrderCancelView(LoginRequiredMixin, UpdateView):
+class AdminOrderCancelView(StaffRequiredMixin, UpdateView):
     model = Order
     template_name = 'adminoperations/admin_ordercancel.html'
     fields = ['status']
@@ -289,7 +306,7 @@ class AdminOrderCancelView(LoginRequiredMixin, UpdateView):
         form.instance.status = 'cancelled'
         return super().form_valid(form)
 
-class OrderReturnView(LoginRequiredMixin, UpdateView):
+class OrderReturnView(StaffRequiredMixin, UpdateView):
     model = ReturnRequest
     template_name = 'adminoperations/admin_orderreturn.html'
     context_object_name = 'return_request'
@@ -351,25 +368,25 @@ class OrderReturnView(LoginRequiredMixin, UpdateView):
 
     
     
-class BrandListView(LoginRequiredMixin, ListView):
+class BrandListView(StaffRequiredMixin, ListView):
     model = Brand
     template_name = 'adminoperations/admin_brandlist.html'
     context_object_name = 'brands'
     
 
-class BrandCreateView(LoginRequiredMixin, CreateView):
+class BrandCreateView(StaffRequiredMixin, CreateView):
     model = Brand
     template_name = 'adminoperations/admin_brandform.html'
     fields = ['brand_name']
     success_url = reverse_lazy('brand_list')
 
-class BrandUpdateView(LoginRequiredMixin, UpdateView):
+class BrandUpdateView(StaffRequiredMixin, UpdateView):
     model = Brand
     template_name = 'adminoperations/admin_brandform.html'
     fields = ['brand_name']
     success_url = reverse_lazy('brand_list')
 
-class BrandDeleteView(LoginRequiredMixin, DeleteView):
+class BrandDeleteView(StaffRequiredMixin, DeleteView):
     model = Brand
     template_name = 'adminoperations/admin_branddelete.html'
     success_url = reverse_lazy('brand_list')

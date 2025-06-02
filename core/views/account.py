@@ -111,7 +111,16 @@ class Account(LoginRequiredMixin, View):
         try:
             # Get all required data for the account page
             customer = Customer.objects.get(email=self.request.user.username)
-            orders = Order.objects.filter(customer=customer).order_by('-date')
+            # Debug print
+            print(f"DEBUG: Found customer with ID {customer.id} and email {customer.email}")
+            
+            # Try to get orders directly
+            orders_direct = Order.objects.filter(customer=customer)
+            print(f"DEBUG: Direct query found {orders_direct.count()} orders")
+            
+            orders = Order.by_customer(customer)
+            print(f"DEBUG: by_customer method found {len(orders)} orders")
+            
             wishlist = Wishlist.objects.filter(user=self.request.user)
             wallet = Wallet.objects.filter(user=self.request.user).first()
             return_requests = ReturnRequest.objects.filter(order__customer=customer)

@@ -15,12 +15,12 @@ urlpatterns = [
     path('cart/remove/<int:product_id>/', cart.RemoveFromCartView.as_view(), name='remove_from_cart'),
     path('cart/update/<int:product_id>/', cart.UpdateCartView.as_view(), name='update_cart'),
     path("check-out", checkout.CheckOut.as_view(), name="checkout"),
+    path('Place-cod-order/', checkout.PlaceCODOrderView.as_view(), name='place_cod_order'),
     
     path("proceed-to-pay", razorpay.razorpaycheck.as_view(), name="razorpaycheck"),
-    path("place-order",razorpay.PlaceOrder.as_view(), name="placeorder" ),
+    # path("place-order",razorpay.PlaceOrder.as_view(), name="placeorder" ),
     path('payment-success/<str:payment_id>/', razorpay.PaymentSuccessView.as_view(), name='payment_success'),
     path('verify-payment/', razorpay.VerifyPaymentView.as_view(), name='verify_payment'),
-
     
     path("contact",contact.ContactView.as_view(), name="contact"),
     path("orders", orders.OrderView.as_view(), name="orders"),

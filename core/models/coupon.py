@@ -1,6 +1,7 @@
 from django.db import models
 from django.core.validators import MinValueValidator, MaxValueValidator
 from django.utils import timezone
+from decimal import Decimal
 
 class Coupon(models.Model):
     code = models.CharField(max_length=50, unique=True)
@@ -49,6 +50,10 @@ class Coupon(models.Model):
         return True, "Coupon is valid"
 
     def calculate_discount(self, total_amount):
+    
+        # Convert total_amount to Decimal
+        total_amount = Decimal(str(total_amount))
+        
         if self.discount_type == 'percentage':
             return (self.discount_value / 100) * total_amount
         return min(self.discount_value, total_amount)  # Fixed amount

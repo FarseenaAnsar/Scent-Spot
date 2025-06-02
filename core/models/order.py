@@ -57,5 +57,13 @@ class Order(models.Model):
     def total(o):
         return (int(o.quantity) * int(o.price))
     
+class OrderItem(models.Model):
+    order = models.ForeignKey(Order, related_name='items', on_delete=models.CASCADE)
+    product = models.ForeignKey(Product, on_delete=models.CASCADE)
+    quantity = models.IntegerField(default=1)
+    price = models.IntegerField()
+    
+    def __str__(self):
+        return f"{self.quantity} of {self.product.name}"
 
 
