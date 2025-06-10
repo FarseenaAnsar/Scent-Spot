@@ -20,7 +20,10 @@ class Cart(LoginRequiredMixin, View):
         return super().dispatch(request, *args, **kwargs)
 
     def get(self, request):
+        # Get cart items from database
         cart_items = CartItem.objects.filter(user=request.user).select_related('product')
+        
+        # Calculate totals
         cart_total = sum(item.product.price * item.quantity for item in cart_items)
         final_total = cart_total
         if 'discount' in request.session:
@@ -44,13 +47,21 @@ class Cart(LoginRequiredMixin, View):
                 pass
             
         cart_items = CartItem.objects.filter(user=request.user).select_related('product')
+        cart_total = sum(item.product.price * item.quantity for item in cart_items)
+        final_total = cart_total
+        if 'discount' in request.session:
+            final_total = cart_total - request.session['discount']
+            
         if not cart_items:
             messages.info(request, "There are no products in the cart. Let's add some products!")
-            return render(request, "cart.html", {
-                "cartItem": []
+            return render(request, self.template_name, {
+                "cart_items": []
             })
-        return render(request, "cart.html", {
-            "cartItem": cart_items
+            
+        return render(request, self.template_name, {
+            "cart_items": cart_items,
+            "cart_total": cart_total,
+            "final_total": final_total
         })
 
 class AddToCartView(LoginRequiredMixin, View):

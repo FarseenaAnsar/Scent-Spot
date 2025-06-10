@@ -107,26 +107,27 @@ class PlaceCODOrderView(LoginRequiredMixin, View):
                     'message': 'Your cart is empty'
                 })
             
-            # Get the first customer with this email or create a new one
+            # Get or create customer using the user's username for consistency
             try:
-                customer = Customer.objects.filter(email=email).first()
-                if not customer:
-                    customer = Customer.objects.create(
-                        email=email,
-                        first_name=fname,
-                        phone=phone
-                    )
-            except Exception as e:
-                print(f"Error getting customer: {str(e)}")
-                # Create a new customer as fallback
+                customer = Customer.objects.get(email=request.user.username)
+                print(f"Using existing customer with email {request.user.username}")
+            except Customer.DoesNotExist:
                 customer = Customer.objects.create(
-                    email=f"{email}-{int(time.time())}",  # Make email unique
+                    email=request.user.username,  # Use username for consistency
                     first_name=fname,
                     phone=phone
                 )
+                print(f"Created new customer with email {request.user.username}")
+                
+            # Store customer ID in session for compatibility with older code
+            request.session['customer_id'] = customer.id
+            print(f"Stored customer ID {customer.id} in session")
             
             # Create orders for each cart item
             for item in cart_items:
+                # Debug the customer object
+                print(f"Creating order with customer ID: {customer.id}, email: {customer.email}")
+                
                 order = Order(
                     product=item.product,
                     customer=customer,

@@ -1,5 +1,7 @@
 from django.urls import path, re_path
 from .views import index, cart, checkout, orders, forgotpass, otp, ordermanage, profile, main, products, contact, about, wishlist, account, coupons, razorpay
+from .views.returns import ReturnOrderView
+from .views.email_verification import VerifyEmailView, SendOTPView
 from django.urls import include
 
 urlpatterns = [
@@ -37,5 +39,9 @@ urlpatterns = [
     # path('social-auth', include('social_django.urls', namespace='social')),
     path('apply-coupon/', coupons.ApplyCouponView.as_view(), name='apply_coupon'),
     path('remove-coupon/', coupons.RemoveCouponView.as_view(), name='remove_coupon'),
+    path('return-order/', ReturnOrderView.as_view(), name='return_order'),
     
+    # Email verification
+    path('verify-email/', VerifyEmailView.as_view(), name='verify_email'),
+    path('send-otp/', SendOTPView.as_view(), name='send_otp'),
 ]

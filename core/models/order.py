@@ -10,6 +10,7 @@ class Order(models.Model):
         ('processing', 'Processing'),
         ('delivered', 'Delivered'),
         ('cancelled', 'Cancelled'),
+        ('returned', 'Returned'),
     ]
     product = models.ForeignKey(Product, null = True, on_delete=models.CASCADE)
     customer = models.ForeignKey(Customer, null = True, on_delete=models.CASCADE)
@@ -23,6 +24,8 @@ class Order(models.Model):
     payment_id = models.CharField(max_length=100,null=True,blank=True)
     order_id = models.CharField(max_length=100,null=True,blank=True)
     created_at = models.DateTimeField(default=timezone.now)
+    delivered_at = models.DateTimeField(null=True, blank=True)
+    cancelled_at = models.DateTimeField(null=True, blank=True)
     
 
     @staticmethod
@@ -47,7 +50,21 @@ class Order(models.Model):
     
     @staticmethod
     def by_customer(customer):
+        if customer is None:
+            return []
         return Order.objects.filter(customer = customer).order_by("date").reverse()
+        
+    @staticmethod
+    def by_user_email(email):
+        if not email:
+            return []
+        try:
+            customers = Customer.objects.filter(email=email)
+            if customers.exists():
+                return Order.objects.filter(customer__in=customers).order_by("date").reverse()
+        except Exception as e:
+            print(f"Error in by_user_email: {str(e)}")
+        return []
     
     @staticmethod
     def get_all_orders():

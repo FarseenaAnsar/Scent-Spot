@@ -1,5 +1,5 @@
 from django.contrib.auth.views import LoginView, LogoutView
-from django.views.generic import ListView, DetailView, CreateView, DeleteView
+from django.views.generic import ListView, DetailView, CreateView, DeleteView, View
 from django.views.generic.edit import UpdateView
 from django.shortcuts import get_object_or_404
 from django.views.generic import TemplateView
@@ -171,11 +171,15 @@ class CategoryCreateView(StaffRequiredMixin, CreateView):
 class CategoryUpdateView(StaffRequiredMixin, UpdateView):
     model = Category
     template_name = 'adminoperations/admin_categoryform.html'
-    fields = ['name','description']  
+    form_class = CategoryForm
     pk_url_kwarg = 'category_id'  
     
     def get_success_url(self):
         return reverse('category_list')
+        
+    def form_valid(self, form):
+        messages.success(self.request, 'Category updated successfully!')
+        return super().form_valid(form)
 
 class CategoryDeleteView(StaffRequiredMixin, DeleteView):
     model = Category
@@ -229,6 +233,35 @@ class ProductCreateView(StaffRequiredMixin, CreateView):
 
     def form_valid(self, form):
         self.object = form.save()
+        
+        # Handle additional images
+        additional_images = self.request.FILES.getlist('additional_images')
+        if additional_images:
+            from core.models.product import ProductImage
+            import os, uuid
+            from django.conf import settings
+            
+            for img_file in additional_images:
+                # Generate unique filename for each additional image
+                file_ext = os.path.splitext(img_file.name)[1]
+                unique_filename = f"{uuid.uuid4()}{file_ext}"
+                
+                # Define path for additional images
+                images_dir = os.path.join(settings.BASE_DIR, 'core', 'static', 'images', 'additional')
+                os.makedirs(images_dir, exist_ok=True)
+                
+                # Save the image
+                img_path = os.path.join(images_dir, unique_filename)
+                with open(img_path, 'wb+') as destination:
+                    for chunk in img_file.chunks():
+                        destination.write(chunk)
+                
+                # Create ProductImage instance
+                ProductImage.objects.create(
+                    product=self.object,
+                    image=f'static/images/additional/{unique_filename}'
+                )
+                
         messages.success(self.request, 'Product created successfully!')
         return HttpResponseRedirect(self.get_success_url())
 
@@ -265,22 +298,20 @@ class AdminOrderListView(StaffRequiredMixin, ListView):
     model = Order
     template_name = 'adminoperations/admin_orderlist.html'
     context_object_name = 'orders'
-    paginate_by = 10  # Optional: add pagination
+    paginate_by = 10
     
     def get_queryset(self):
-        orders = Order.objects.select_related('customer', 'product').all().order_by('-date')
-        # Debug print
-        for order in orders:
-            print(f"Order ID: {order.id}")
-            print(f"Customer: {order.customer}")
-            print(f"Customer Name: {order.customer.first_name if order.customer else 'No customer'}")
-            print(f"Date: {order.date}")
-            print("-------------------")
-        return orders
+        # Get orders in descending order by date
+        return Order.objects.select_related('customer', 'product').all().order_by('-date')
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        print(f"Number of orders in context: {len(context['orders'])}")
+        # Add pagination info
+        page_obj = context['page_obj']
+        paginator = context['paginator']
+        context['is_paginated'] = page_obj.has_other_pages()
+        context['total_pages'] = paginator.num_pages
+        context['total_orders'] = paginator.count
         return context
 
 
@@ -390,3 +421,24 @@ class BrandDeleteView(StaffRequiredMixin, DeleteView):
     model = Brand
     template_name = 'adminoperations/admin_branddelete.html'
     success_url = reverse_lazy('brand_list')
+class UpdateOrderStatusView(StaffRequiredMixin, View):
+    def post(self, request, order_id):
+        order = get_object_or_404(Order, id=order_id)
+        new_status = request.POST.get('status')
+        
+        if new_status in dict(Order.STATUS_CHOICES).keys():
+            # Set appropriate timestamps based on status
+            if new_status == 'delivered':
+                order.delivered_at = timezone.now()
+            elif new_status == 'cancelled':
+                order.cancelled_at = timezone.now()
+                
+            # Update the status
+            order.status = new_status
+            order.save()
+            
+            messages.success(request, f'Order status updated to {new_status.title()}')
+        else:
+            messages.error(request, 'Invalid status')
+            
+        return redirect('admin_order_details', order_id=order_id)

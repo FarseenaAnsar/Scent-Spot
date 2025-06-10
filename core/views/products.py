@@ -5,10 +5,13 @@ from core.models.rate import Rate
 from django.views import View
 from django.shortcuts import get_object_or_404
 from core.models.product import PerfumeAttributes
+from core.models.cart import CartItem
+from core.models.wishlist import Wishlist
 import numpy as np
 from sklearn.preprocessing import MultiLabelBinarizer
 from sklearn.metrics.pairwise import cosine_similarity
 from django.contrib import messages
+from django.contrib.auth.decorators import login_required
 
 class Products(View):
     def post(self, request):
@@ -16,6 +19,10 @@ class Products(View):
         prd_id = request.POST.get("prdid")
         p_obj = None
         type2 = None
+        
+        # Add request to product for template filter access
+        Product.add_to_class('_request', None)
+        setattr(Product, '_request', request)
         
         if prd_id is not None:
             product = get_object_or_404(Product, id=prd_id)
@@ -37,18 +44,49 @@ class Products(View):
                 })
             
             # If in stock, proceed with adding to cart
-            cart = request.session.get("cart", {})
-            q = cart.get(prd_id, 0)
-            
-            # Check if adding more would exceed available stock
-            if int(q) + int(amt) > product.stock:
-                messages.warning(request, f"Only {product.stock} items available in stock!")
-                amt = product.stock - int(q) if int(q) < product.stock else 0
+            if request.user.is_authenticated:
+                # Add to database cart for logged-in users
+                try:
+                    quantity = int(amt)
+                    cart_item, created = CartItem.objects.get_or_create(
+                        user=request.user,
+                        product=product,
+                        defaults={'quantity': quantity}
+                    )
+                    
+                    if not created:
+                        # Check if adding more would exceed available stock
+                        if cart_item.quantity + quantity > product.stock:
+                            messages.warning(request, f"Only {product.stock} items available in stock!")
+                            quantity = product.stock - cart_item.quantity if cart_item.quantity < product.stock else 0
+                        
+                        if quantity > 0:
+                            cart_item.quantity += quantity
+                            cart_item.save()
+                            messages.success(request, 'Cart updated successfully!')
+                    else:
+                        messages.success(request, 'Item added to your cart!')
+                        
+                    # Also update session cart for consistency
+                    cart = request.session.get("cart", {})
+                    cart[str(prd_id)] = cart_item.quantity
+                    request.session["cart"] = cart
+                except Exception as e:
+                    messages.error(request, f'Error adding item to cart: {str(e)}')
+            else:
+                # Use session cart for non-logged in users
+                cart = request.session.get("cart", {})
+                q = cart.get(str(prd_id), 0)
                 
-            if int(amt) > 0:
-                q = int(q) + int(amt) if q else int(amt)
-                cart[prd_id] = q
-                request.session["cart"] = cart
+                # Check if adding more would exceed available stock
+                if int(q) + int(amt) > product.stock:
+                    messages.warning(request, f"Only {product.stock} items available in stock!")
+                    amt = product.stock - int(q) if int(q) < product.stock else 0
+                    
+                if int(amt) > 0:
+                    q = int(q) + int(amt) if q else int(amt)
+                    cart[str(prd_id)] = q
+                    request.session["cart"] = cart
             
             return render(request, "products.html", {
                 "product": p_obj[0],
@@ -61,6 +99,10 @@ class Products(View):
         return redirect('products')
         
     def get(self, request):
+        # Add request to product for template filter access
+        Product.add_to_class('_request', None)
+        setattr(Product, '_request', request)
+            
         product_id = request.GET.get("product_id")
         
         if product_id:

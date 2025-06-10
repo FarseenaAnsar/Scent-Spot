@@ -10,10 +10,13 @@
         <div class="row container">
             <div class="col-4 pos">
                 <div class="img">
-                    <img class="card-img-top" src="{{product.image.url}}" alt="Card image cap" id="mainImage">
-                    {% if out_of_stock or product.stock < 1 %}
-                        <div class="out-of-stock-overlay">Out of Stock</div>
-                    {% endif %}
+                    <div id="imageZoom">
+                        <img class="card-img-top" src="{{product.image.url}}" alt="Card image cap" id="mainImage">
+                        {% if out_of_stock or product.stock < 1 %}
+                            <div class="out-of-stock-overlay">Out of Stock</div>
+                        {% endif %}
+                        <!-- Zoom overlay will be added by JavaScript -->
+                    </div>
                 </div>
                 <!-- Additional images thumbnails -->
                 <div class="additional-images mt-3">
@@ -82,14 +85,18 @@
                     {% else %}
                         <form action="/products" method="POST" class="d-flex flex-row p-1">
                             {% csrf_token %}
-                            <input type="number" name="amount" value=1 max="{{ product.stock }}" min="1" class="form-control" />
+                            <input type="number" name="amount" value=1 min="1" max="2" class="form-control" />
                             <input hidden type="text" class="btn btn-primary btn-sm" value="{{product.id}}" name="prdid">
-                            <input type="submit" class="btn btn-sm cartbtn" value="CART">
+                            <input type="submit" class="btn btn-sm cartbtn" value="ADD TO CART">
                         </form>
-                        {% if product|is_in_cart:request.session.cart %}
-                        <div class="card-footer p-0 row">
-                            <div class="text-center">{{product|is_in_cart:request.session.cart}} already in Cart</div>
-                        </div>
+                        {% if request.session.cart %}
+                            {% with product|is_in_cart:request.session.cart as in_cart %}
+                                {% if in_cart %}
+                                <div class="card-footer p-0 row">
+                                    <div class="text-center">{{in_cart}} already in Cart</div>
+                                </div>
+                                {% endif %}
+                            {% endwith %}
                         {% endif %}
                     {% endif %}
                 </div>
@@ -127,28 +134,47 @@
 {% block js %}
     <script>
         document.addEventListener('DOMContentLoaded', function() {
-            // Initialize main image switching functionality
-            initializeImageSwitching();
+    const imageZoom = document.getElementById('imageZoom');
+    const mainImage = document.getElementById('mainImage');
+    
+    if (imageZoom && mainImage) {
+        // Set the image URL as a CSS variable
+        imageZoom.style.setProperty('--bg-image', `url(${mainImage.src})`);
+        
+        imageZoom.addEventListener('mousemove', (e) => {
+            // Show the zoom effect
+            imageZoom.style.setProperty('--display', 'block');
             
-            // Initialize zoom functionality
-            initializeZoom();
+            // Calculate cursor position as percentage
+            const rect = imageZoom.getBoundingClientRect();
+            const x = (e.clientX - rect.left) / rect.width * 100;
+            const y = (e.clientY - rect.top) / rect.height * 100;
+            
+            // Set position for zoom effect
+            imageZoom.style.setProperty('--zoom-x', x + '%');
+            imageZoom.style.setProperty('--zoom-y', y + '%');
         });
-
-        function initializeImageSwitching() {
-            const thumbnails = document.querySelectorAll('.thumb-img');
+        
+        imageZoom.addEventListener('mouseleave', () => {
+            imageZoom.style.setProperty('--display', 'none');
+        });
+        
+        // Update zoom image when main image changes
+        function changeMainImage(src) {
             const mainImage = document.getElementById('mainImage');
-
-            thumbnails.forEach(thumb => {
-                thumb.addEventListener('click', function() {
-                    // Change main image with fade effect
-                    changeMainImage(this.src);
-                    
-                    // Update active thumbnail
-                    updateActiveThumbnail(this);
-                });
-            });
+            mainImage.style.opacity = '0.5';
+            mainImage.src = src;
+            imageZoom.style.setProperty('--bg-image', `url(${src})`);
+            mainImage.onload = function() {
+                mainImage.style.opacity = '1';
+            };
         }
-
+        
+        // Make changeMainImage available globally
+        window.changeMainImage = changeMainImage;
+    }
+});
+        
         function changeMainImage(src) {
             const mainImage = document.getElementById('mainImage');
             mainImage.style.opacity = '0.5';
@@ -157,7 +183,7 @@
                 mainImage.style.opacity = '1';
             };
         }
-
+        
         function updateActiveThumbnail(clickedThumb) {
             // Remove active border from all thumbnails
             document.querySelectorAll('.thumb-container').forEach(container => {
@@ -166,39 +192,25 @@
             // Add active border to clicked thumbnail
             clickedThumb.parentElement.style.borderColor = '#333';
         }
+        
+        function initializeImageSwitching() {
+            const thumbnails = document.querySelectorAll('.thumb-img');
+            const mainImage = document.getElementById('mainImage');
 
-        function initializeZoom() {
-            // Create overlay div
-            const overlay = document.createElement('div');
-            overlay.className = 'overlay';
-            document.body.appendChild(overlay);
-
-            // Get all product images
-            const productImages = document.querySelectorAll('.card-img-top');
-
-            productImages.forEach(img => {
-                img.addEventListener('click', function() {
-                    if (!this.classList.contains('zoomed')) {
-                        // Zoom in
-                        this.classList.add('zoomed');
-                        overlay.style.display = 'block';
-                    } else {
-                        // Zoom out
-                        this.classList.remove('zoomed');
-                        overlay.style.display = 'none';
-                    }
+            thumbnails.forEach(thumb => {
+                thumb.addEventListener('click', function(e) {
+                    // Change main image with fade effect
+                    changeMainImage(this.src);
+                    
+                    // Update active thumbnail
+                    updateActiveThumbnail(this);
                 });
             });
-
-            // Close zoom when clicking overlay
-            overlay.addEventListener('click', function() {
-                const zoomedImage = document.querySelector('.zoomed');
-                if (zoomedImage) {
-                    zoomedImage.classList.remove('zoomed');
-                    overlay.style.display = 'none';
-                }
-            });
         }
+        
+        document.addEventListener('DOMContentLoaded', function() {
+            // Initialize main image switching functionality
+            initializeImageSwitching();
+        });
     </script>
-
 {% endblock %}

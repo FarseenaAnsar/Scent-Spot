@@ -22,26 +22,36 @@ class Account(LoginRequiredMixin, View):
     form_class = CustomerProfileForm
 
     def get(self, request):
-        # Create form instance with customer data
+        # Get or create customer data
         try:
             customer = Customer.objects.get(email=request.user.username)
+            
+            # Update customer data if fields are empty
+            if not customer.first_name and request.user.first_name:
+                customer.first_name = request.user.first_name
+                customer.save()
+                
+            if not customer.last_name and request.user.last_name:
+                customer.last_name = request.user.last_name
+                customer.save()
+                
         except Customer.DoesNotExist:
             # Create a new customer if one doesn't exist
             customer = Customer.objects.create(
                 email=request.user.username,
-                first_name=request.user.first_name,
-                last_name=request.user.last_name
+                first_name=request.user.first_name or "",
+                last_name=request.user.last_name or "",
+                phone=""  # Explicitly set phone to empty string
             )
         
-        form = self.form_class(instance=customer)
+        # Get context data
         context = self.get_context_data()
-        context['form'] = form
+        
         return render(request, self.template_name, context)
 
     def post(self, request):
         action = request.POST.get('action')
         order_id = request.POST.get('order_id')
-        form = None  # Initialize form variable
 
         if action == 'cancel':
             return self.cancel_order(request, order_id)
@@ -55,6 +65,8 @@ class Account(LoginRequiredMixin, View):
             return self.delete_address(request)
         elif action == 'set_default_address':
             return self.set_default_address(request)
+        elif action == 'verify_email':
+            return self.verify_email(request)
         
         # Handle form submission for profile update
         try:
@@ -63,63 +75,88 @@ class Account(LoginRequiredMixin, View):
             # Create a new customer if one doesn't exist
             customer = Customer.objects.create(
                 email=request.user.username,
-                first_name=request.user.first_name,
-                last_name=request.user.last_name
+                first_name=request.user.first_name or "",
+                last_name=request.user.last_name or "",
+                phone=""  # Explicitly set phone to empty string
             )
         
-        form = self.form_class(request.POST, instance=customer)
-        if form.is_valid():
-            form.save()
+        # Get form data directly from POST
+        first_name = request.POST.get('first_name')
+        last_name = request.POST.get('last_name')
+        email = request.POST.get('email')
+        phone = request.POST.get('phone')
+        current_password = request.POST.get('current_password')
+        new_password = request.POST.get('new_password')
+        confirm_password = request.POST.get('confirm_password')
+        
+        # Update customer data
+        customer.first_name = first_name
+        customer.last_name = last_name
+        # Only update phone if it's different from first_name
+        if phone != first_name:
+            customer.phone = phone
             
-            # Handle password change if provided
-            if form.cleaned_data.get('new_password'):
-                if form.cleaned_data['new_password'] != form.cleaned_data['confirm_password']:
-                    messages.error(request, 'New passwords do not match!')
-                elif not request.user.check_password(form.cleaned_data['current_password']):
-                    messages.error(request, 'Current password is incorrect!')
-                else:
-                    request.user.set_password(form.cleaned_data['new_password'])
-                    request.user.save()
-                    messages.success(request, 'Profile and password updated successfully!')
+        # Only update email if it's different and verification is not required
+        if email and email != customer.email:
+            # Redirect to email verification
+            return redirect(f'/verify-email/?email={email}')
+            
+        customer.save()
+        
+        # Update Django user model to keep in sync
+        user = request.user
+        user.first_name = first_name
+        user.last_name = last_name
+        user.save()
+        
+        # Handle password change if provided
+        if new_password:
+            if new_password != confirm_password:
+                messages.error(request, 'New passwords do not match!')
+            elif not request.user.check_password(current_password):
+                messages.error(request, 'Current password is incorrect!')
             else:
-                messages.success(request, 'Profile updated successfully!')
-            
+                request.user.set_password(new_password)
+                request.user.save()
+                messages.success(request, 'Profile and password updated successfully!')
+        else:
+            messages.success(request, 'Profile updated successfully!')
+        
+        return redirect('account')
+
+    # Removed form_valid method as we're not using Django forms anymore
+
+    def verify_email(self, request):
+        email = request.POST.get('email')
+        if not email:
+            messages.error(request, 'Email is required')
             return redirect('account')
-        
-        # If we get here, there was an error
-        context = self.get_context_data()
-        context['form'] = form
-        return render(request, self.template_name, context)
-
-    def form_valid(self, form):
-        if form.cleaned_data.get('new_password'):
-            if form.cleaned_data['new_password'] != form.cleaned_data['confirm_password']:
-                messages.error(self.request, 'New passwords do not match!')
-                return self.form_invalid(form)
             
-            if not self.request.user.check_password(form.cleaned_data['current_password']):
-                messages.error(self.request, 'Current password is incorrect!')
-                return self.form_invalid(form)
-            
-            self.request.user.set_password(form.cleaned_data['new_password'])
-            self.request.user.save()
-            messages.success(self.request, 'Profile updated successfully!')
+        # Redirect to the email verification page
+        return redirect(f'/verify-email/?email={email}')
         
-        return super().form_valid(form)
-
     def get_context_data(self, **kwargs):
         try:
             # Get all required data for the account page
             customer = Customer.objects.get(email=self.request.user.username)
-            # Debug print
-            print(f"DEBUG: Found customer with ID {customer.id} and email {customer.email}")
             
-            # Try to get orders directly
-            orders_direct = Order.objects.filter(customer=customer)
-            print(f"DEBUG: Direct query found {orders_direct.count()} orders")
-            
-            orders = Order.by_customer(customer)
-            print(f"DEBUG: by_customer method found {len(orders)} orders")
+            # Fix phone field if it contains first_name value
+            if customer.phone == customer.first_name:
+                customer.phone = ""
+                customer.save()
+                
+            # Ensure customer has values for all fields
+            if not customer.first_name:
+                customer.first_name = self.request.user.first_name or ""
+            if not customer.last_name:
+                customer.last_name = self.request.user.last_name or ""
+            if not customer.phone:
+                customer.phone = ""
+            if not customer.email:
+                customer.email = self.request.user.username or ""
+                
+            # Get only this customer's orders
+            orders = Order.objects.filter(customer=customer)
             
             wishlist = Wishlist.objects.filter(user=self.request.user)
             wallet = Wallet.objects.filter(user=self.request.user).first()
@@ -128,7 +165,7 @@ class Account(LoginRequiredMixin, View):
 
             return {
                 'customer': customer,
-                'orders': orders,
+                'orders': orders,  # Only show this customer's orders
                 'wishlist': wishlist,
                 'wallet': wallet,
                 'return_requests': return_requests,
@@ -136,10 +173,12 @@ class Account(LoginRequiredMixin, View):
                 'user': self.request.user
             }
         except Customer.DoesNotExist:
+            # Create a new customer with empty phone field
             customer = Customer.objects.create(
-                email=self.request.user.email,
-                first_name=self.request.user.first_name,
-                last_name=self.request.user.last_name
+                email=self.request.user.username,
+                first_name=self.request.user.first_name or "",
+                last_name=self.request.user.last_name or "",
+                phone=""
             )
             
             return {

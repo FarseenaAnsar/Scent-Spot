@@ -1,15 +1,33 @@
-from django import template 
+from django import template
+from django.contrib.auth.models import AnonymousUser
+from core.models.cart import CartItem
 
 register = template.Library()
 
 @register.filter(name = "is_in_cart")
 def is_in_cart(product, cart):
-    keys = cart.keys()
-    for prd_id in keys:
-        if(prd_id == ""):
-            break
-        if (int(prd_id) == int(product.id)):
-            return cart.get(prd_id)
+    # First check if we have a user in the context
+    request = getattr(product, '_request', None)
+    if request and request.user and request.user.is_authenticated:
+        # Check database cart
+        try:
+            cart_item = CartItem.objects.filter(user=request.user, product=product).first()
+            if cart_item:
+                return cart_item.quantity
+        except Exception:
+            pass
+    
+    # Fall back to session cart
+    if cart:
+        keys = cart.keys()
+        for prd_id in keys:
+            if prd_id == "":
+                break
+            try:
+                if int(prd_id) == int(product.id):
+                    return cart.get(prd_id)
+            except (ValueError, TypeError):
+                continue
     return False
 
 @register.filter(name = "cart_quantity")

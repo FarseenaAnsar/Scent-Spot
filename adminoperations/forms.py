@@ -1,6 +1,6 @@
 from django import forms
 from core.models.category import Category
-from core.models.product import Product
+from core.models.product import Product, ProductImage
 import os
 from django.conf import settings
 from PIL import Image
@@ -9,7 +9,14 @@ import uuid
 class CategoryForm(forms.ModelForm):
     class Meta:
         model = Category
-        fields = ['name']
+        fields = ['name', 'description']
+        
+    def clean_name(self):
+        name = self.cleaned_data.get('name')
+        # Check if category with same name (case insensitive) already exists
+        if Category.objects.filter(name__iexact=name).exclude(pk=self.instance.pk).exists():
+            raise forms.ValidationError(f"Category with name '{name}' already exists (case insensitive)")
+        return name
         
 class ProductForm(forms.ModelForm):
     category = forms.CharField(max_length=100)
@@ -27,10 +34,11 @@ class ProductForm(forms.ModelForm):
     
     class Meta:
         model = Product
-        fields = ['name', 'price', 'description', 'image', 'category', 'brand', 'gender', 'size']
+        fields = ['name', 'price', 'description', 'image', 'category', 'brand', 'gender', 'size', 'stock']
         widgets = {
             'description': forms.Textarea(attrs={'rows': 4}),
             'price': forms.NumberInput(attrs={'min': 0, 'step': '0.01'}),
+            'stock': forms.NumberInput(attrs={'min': 0, 'step': '1'}),
         }
 
     def save(self, commit=True):

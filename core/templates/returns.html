@@ -1,0 +1,49 @@
+{% extends "base.html" %}
+
+{%  load static %}
+{% block css%}
+    <link href="static/css/account.css" rel="stylesheet" type="text/css">
+{% endblock %}
+
+{% block content %}
+<div class="container mt-5">
+    <div class="row">
+        <div class="col-md-8 offset-md-2">
+            <div class="card">
+                <div class="card-header bg-success text-white">
+                    <h3>Return Request Submitted Successfully</h3>
+                </div>
+                <div class="card-body">
+                    <h5 class="card-title">Thank you for your return request</h5>
+                    <p class="card-text">Your return request has been submitted successfully. Our team will review your request and get back to you shortly.</p>
+                    
+                    <div class="return-details mt-4">
+                        <h6>Return Request Details:</h6>
+                        <ul class="list-group">
+                            <li class="list-group-item"><strong>Order ID:</strong> #{{ return_request.order.id }}</li>
+                            <li class="list-group-item"><strong>Product:</strong> {{ return_request.order.product.name }}</li>
+                            <li class="list-group-item"><strong>Return Reason:</strong> {{ return_request.reason }}</li>
+                            <li class="list-group-item"><strong>Status:</strong> <span class="badge bg-warning">{{ return_request.status }}</span></li>
+                            <li class="list-group-item"><strong>Requested On:</strong> {{ return_request.created_at|date:"F d, Y" }}</li>
+                        </ul>
+                    </div>
+                    
+                    <div class="next-steps mt-4">
+                        <h6>Next Steps:</h6>
+                        <ol>
+                            <li>Package the item securely in its original packaging if possible.</li>
+                            <li>Include a copy of your order receipt or return confirmation.</li>
+                            <li>Ship the item to our return address (details will be emailed to you).</li>
+                            <li>Once we receive and inspect the item, we'll process your {{ return_request.preferred_solution }}.</li>
+                        </ol>
+                    </div>
+                    
+                    <div class="mt-4">
+                        <a href="{% url 'account' %}" class="btn btn-primary">Back to My Account</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

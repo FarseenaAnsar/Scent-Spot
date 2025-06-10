@@ -26,6 +26,7 @@ urlpatterns = [
     path('adminhome/orders/<int:order_id>/', views.AdminOrderDetailView.as_view(), name='admin_order_details'),
     path('adminhome/orders/cancel/<int:order_id>/', views.AdminOrderCancelView.as_view(), name='admin_order_cancel'),
     path('adminhome/orders/returned/<int:order_id>/', views.OrderReturnView.as_view(), name='change_to_returned'),
+    path('adminhome/orders/update-status/<int:order_id>/', views.UpdateOrderStatusView.as_view(), name='update_order_status'),
 
     path('adminhome/brands/', views.BrandListView.as_view(), name='brand_list'),
     path('adminhome/brands/add/', views.BrandCreateView.as_view(), name='brand_add'),

@@ -9,15 +9,31 @@ from django.contrib import messages
 
 class OrderView(View):
     def get(self, request):
-        customer = request.session.get("customer_id")
-        order = Order.by_customer(customer)
+        if not request.user.is_authenticated:
+            return redirect('login')
+            
+        print(f"Getting orders for user: {request.user.username}")
+        
+        # Get customer associated with the user
+        try:
+            customer = Customer.objects.get(email=request.user.username)
+            orders = Order.objects.filter(customer=customer)
+            print(f"Found {orders.count()} orders for customer {customer.id}")
+        except Customer.DoesNotExist:
+            print(f"No customer found with email {request.user.username}")
+            orders = []
+            
         o = []
-        for od in order:
-            chk_rate = Rate.check_order_id(od)
-            if (chk_rate):
-                pass
-            else:
-                o.append(od)
+        for od in orders:
+            try:
+                chk_rate = Rate.check_order_id(od)
+                if not chk_rate:
+                    o.append(od)
+            except Exception as e:
+                print(f"Error checking rate for order {od.id}: {str(e)}")
+                o.append(od)  # Include the order anyway
+                
+        print(f"Found {len(o)} orders to display")
         return render(request, "orders.html", {"order":o})
     
     def post(self, request):
