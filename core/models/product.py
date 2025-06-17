@@ -2,6 +2,8 @@ from django.db import models
 from .category import Category
 from .brand import Brand
 from django.core.validators import MinValueValidator, MaxValueValidator
+from decimal import Decimal
+from django.utils import timezone
 
 class Product(models.Model):
     name = models.CharField(max_length=50)
@@ -14,6 +16,27 @@ class Product(models.Model):
     gender = models.CharField(max_length=50, default="")
     size = models.CharField(max_length=50, default="")
     stock = models.IntegerField(default=0)
+    
+    def __str__(self):
+        return self.name
+    
+    @property
+    def get_discount_price(self):
+        """Get the discounted price after applying the best offer"""
+        from core.utils.offer_utils import calculate_discount_price
+        return calculate_discount_price(self)
+    
+    @property
+    def has_offer(self):
+        """Check if the product has any active offer"""
+        from core.utils.offer_utils import get_best_offer
+        return get_best_offer(self) is not None
+    
+    @property
+    def offer_details(self):
+        """Get details about the best offer for this product"""
+        from core.utils.offer_utils import get_offer_details
+        return get_offer_details(self)
 
     @staticmethod
     def get_product_by_id(id):

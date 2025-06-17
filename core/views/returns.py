@@ -5,6 +5,7 @@ from django.contrib import messages
 from core.models.order import Order
 from core.models.return_request import ReturnRequest
 from core.models.customer import Customer
+from core.models.product import Product
 
 class ReturnOrderView(LoginRequiredMixin, View):
     def post(self, request):
@@ -32,6 +33,11 @@ class ReturnOrderView(LoginRequiredMixin, View):
             # Update order status
             order.status = 'return_requested'
             order.save()
+            
+            # Increment product stock when order is returned
+            product = order.product
+            product.stock += order.quantity
+            product.save()
             
             messages.success(request, 'Return request submitted successfully!')
             

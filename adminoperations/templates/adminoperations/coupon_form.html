@@ -1,0 +1,111 @@
+{% extends 'adminoperations/admin_base.html' %}
+
+{% block title %}{{ title }}{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card">
+                <div class="card-header bg-primary text-white">
+                    <h3 class="mb-0">{{ title }}</h3>
+                </div>
+                <div class="card-body">
+                    <form method="post">
+                        {% csrf_token %}
+                        
+                        <div class="mb-3">
+                            <label for="{{ form.code.id_for_label }}" class="form-label">Coupon Code</label>
+                            {{ form.code }}
+                            {% if form.code.errors %}
+                                <div class="text-danger">{{ form.code.errors }}</div>
+                            {% endif %}
+                        </div>
+                        
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <label for="{{ form.discount_type.id_for_label }}" class="form-label">Discount Type</label>
+                                {{ form.discount_type }}
+                                {% if form.discount_type.errors %}
+                                    <div class="text-danger">{{ form.discount_type.errors }}</div>
+                                {% endif %}
+                            </div>
+                            <div class="col-md-6">
+                                <label for="{{ form.discount_value.id_for_label }}" class="form-label">Discount Value</label>
+                                {{ form.discount_value }}
+                                {% if form.discount_value.errors %}
+                                    <div class="text-danger">{{ form.discount_value.errors }}</div>
+                                {% endif %}
+                            </div>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="{{ form.minimum_purchase.id_for_label }}" class="form-label">Minimum Purchase Amount</label>
+                            {{ form.minimum_purchase }}
+                            {% if form.minimum_purchase.errors %}
+                                <div class="text-danger">{{ form.minimum_purchase.errors }}</div>
+                            {% endif %}
+                        </div>
+                        
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <label for="{{ form.valid_from.id_for_label }}" class="form-label">Valid From</label>
+                                {{ form.valid_from }}
+                                {% if form.valid_from.errors %}
+                                    <div class="text-danger">{{ form.valid_from.errors }}</div>
+                                {% endif %}
+                            </div>
+                            <div class="col-md-6">
+                                <label for="{{ form.valid_to.id_for_label }}" class="form-label">Valid To</label>
+                                {{ form.valid_to }}
+                                {% if form.valid_to.errors %}
+                                    <div class="text-danger">{{ form.valid_to.errors }}</div>
+                                {% endif %}
+                            </div>
+                        </div>
+                        
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <label for="{{ form.usage_limit.id_for_label }}" class="form-label">Usage Limit (0 for unlimited)</label>
+                                {{ form.usage_limit }}
+                                {% if form.usage_limit.errors %}
+                                    <div class="text-danger">{{ form.usage_limit.errors }}</div>
+                                {% endif %}
+                            </div>
+                            <div class="col-md-6">
+                                <div class="form-check mt-4">
+                                    {{ form.active }}
+                                    <label class="form-check-label" for="{{ form.active.id_for_label }}">
+                                        Active
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="d-flex justify-content-between">
+                            <a href="{% url 'coupon_list' %}" class="btn btn-secondary">Cancel</a>
+                            <button type="submit" class="btn btn-primary">Save</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Add Bootstrap form classes
+        const formElements = document.querySelectorAll('input, select, textarea');
+        formElements.forEach(element => {
+            if (element.type !== 'checkbox') {
+                element.classList.add('form-control');
+            } else {
+                element.classList.add('form-check-input');
+            }
+        });
+    });
+</script>
+{% endblock %}

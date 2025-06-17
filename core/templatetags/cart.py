@@ -1,6 +1,7 @@
 from django import template
 from django.contrib.auth.models import AnonymousUser
 from core.models.cart import CartItem
+from core.models.wishlist import Wishlist
 
 register = template.Library()
 
@@ -77,3 +78,10 @@ def cart_num(cart):
 @register.filter(name = "loop_counter")
 def loop_counter(num):
     return range(num)
+
+@register.filter(name = "is_in_wishlist")
+def is_in_wishlist(product, user):
+    """Check if a product is in the user's wishlist"""
+    if not user.is_authenticated:
+        return False
+    return Wishlist.objects.filter(user=user, product=product).exists()

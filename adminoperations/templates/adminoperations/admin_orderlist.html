@@ -21,6 +21,7 @@
                             <th>Order ID</th>
                             <th>Customer</th>
                             <th>Date</th>
+                            <th>Amount</th>
                             <th>Status</th>
                             <th>Actions</th>
                         </tr>
@@ -29,8 +30,15 @@
                         {% for order in orders %}
                         <tr>
                             <td>{{ order.id }}</td>
-                            <td>{{ order.customer.first_name }}</td>
+                            <td>{{ order.customer.email }}</td>
                             <td>{{ order.date|date:"M d, Y" }}</td>
+                            <td>
+                                {% if order.final_total %}
+                                    ₹{{ order.final_total }}
+                                {% else %}
+                                    ₹{{ order.price }}
+                                {% endif %}
+                            </td>
                             <td>
                                 <span class="badge {% if order.status == 'received' %}bg-info{% elif order.status == 'processing' %}bg-warning{% elif order.status == 'delivered' %}bg-success{% elif order.status == 'cancelled' %}bg-danger{% elif order.status == 'returned' %}bg-secondary{% endif %}">
                                     {{ order.status|title }}
@@ -38,13 +46,13 @@
                             </td>
                             <td>
                                 <a href="{% url 'admin_order_details' order.id %}" class="btn btn-info btn-sm">View</a>
-                                <a href="{% url 'admin_order_cancel' order.id %}" class="btn btn-danger btn-sm">Cancel</a>
-                                <a href="{% url 'change_to_returned' order.id %}" class="btn btn-warning btn-sm">Return</a>
+                                {% comment %} <a href="{% url 'admin_order_cancel' order.id %}" class="btn btn-danger btn-sm">Cancel</a>
+                                <a href="{% url 'change_to_returned' order.id %}" class="btn btn-warning btn-sm">Return</a> {% endcomment %}
                             </td>
                         </tr>
                         {% empty %}
                         <tr>
-                            <td colspan="5" class="text-center">No orders found</td>
+                            <td colspan="6" class="text-center">No orders found</td>
                         </tr>
                         {% endfor %}
                     </tbody>

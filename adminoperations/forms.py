@@ -1,6 +1,7 @@
 from django import forms
 from core.models.category import Category
 from core.models.product import Product, ProductImage
+from core.models.offer import ProductOffer, CategoryOffer, ReferralOffer
 import os
 from django.conf import settings
 from PIL import Image
@@ -105,3 +106,30 @@ class ProductForm(forms.ModelForm):
         if price <= 0:
             raise forms.ValidationError("Price must be greater than zero")
         return price
+        
+class ProductOfferForm(forms.ModelForm):
+    class Meta:
+        model = ProductOffer
+        fields = ['name', 'product', 'discount_percentage', 'valid_from', 'valid_to', 'active']
+        widgets = {
+            'valid_from': forms.DateTimeInput(attrs={'type': 'datetime-local'}),
+            'valid_to': forms.DateTimeInput(attrs={'type': 'datetime-local'}),
+        }
+
+class CategoryOfferForm(forms.ModelForm):
+    class Meta:
+        model = CategoryOffer
+        fields = ['name', 'category', 'discount_percentage', 'valid_from', 'valid_to', 'active']
+        widgets = {
+            'valid_from': forms.DateTimeInput(attrs={'type': 'datetime-local'}),
+            'valid_to': forms.DateTimeInput(attrs={'type': 'datetime-local'}),
+        }
+
+class ReferralOfferForm(forms.ModelForm):
+    class Meta:
+        model = ReferralOffer
+        fields = ['name', 'code', 'discount_percentage', 'valid_from', 'valid_to', 'active', 'max_uses']
+        widgets = {
+            'valid_from': forms.DateTimeInput(attrs={'type': 'datetime-local'}),
+            'valid_to': forms.DateTimeInput(attrs={'type': 'datetime-local'}),
+        }

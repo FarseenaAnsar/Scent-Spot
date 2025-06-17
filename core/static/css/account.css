@@ -220,13 +220,140 @@ h3 {
     font-style: italic;
 }
 
+/* Offers & Referrals Section */
+.offers-section h3 {
+    font-size: 1.5rem;
+    color: #e91e63;
+    margin-bottom: 1.5rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 2px solid #f0f0f0;
+}
+
+.offers-section h4 {
+    color: #333;
+    margin: 1rem 0;
+    font-size: 1.2rem;
+}
+
+/* Referral Box */
+.referral-box {
+    background-color: #fce4ec;
+    border-radius: 8px;
+    padding: 1.5rem;
+    margin-bottom: 1.5rem;
+    border-left: 4px solid #e91e63;
+}
+
+.referral-code {
+    display: flex;
+    align-items: center;
+    margin: 1rem 0;
+    background-color: #fff;
+    padding: 0.8rem 1rem;
+    border-radius: 6px;
+    border: 1px solid #f8bbd0;
+}
+
+.referral-code span {
+    font-size: 1.2rem;
+    font-weight: bold;
+    letter-spacing: 1px;
+    margin-right: 1rem;
+    flex-grow: 1;
+    color: #e91e63;
+}
+
+.referral-code button {
+    background-color: #e91e63;
+    color: white;
+    border: none;
+    padding: 0.5rem 1rem;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: background-color 0.3s;
+}
+
+.referral-code button:hover {
+    background-color: #c2185b;
+}
+
+/* Referral List */
+.referral-list {
+    margin-top: 1rem;
+}
+
+.referral-item {
+    background-color: #fff;
+    border-radius: 6px;
+    padding: 1rem;
+    margin-bottom: 0.8rem;
+    border: 1px solid #eee;
+    transition: transform 0.2s ease;
+}
+
+.referral-item:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+.referral-item p {
+    margin: 0.3rem 0;
+}
+
+.text-muted {
+    color: #757575;
+    font-size: 0.9rem;
+}
+
+/* Offer List */
+.offer-list {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+    gap: 1rem;
+    margin-top: 1rem;
+}
+
+.offer-item {
+    background: linear-gradient(135deg, #fff 0%, #fce4ec 100%);
+    border-radius: 8px;
+    overflow: hidden;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    transition: transform 0.2s;
+    border: 1px solid #f8bbd0;
+}
+
+.offer-item:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 5px 15px rgba(0,0,0,0.15);
+}
+
+.offer-details {
+    padding: 1.2rem;
+}
+
+.offer-details h5 {
+    color: #e91e63;
+    margin-bottom: 0.8rem;
+    font-size: 1.1rem;
+}
+
+.offer-details p {
+    margin: 0.5rem 0;
+    color: #333;
+}
+
+.offer-details p strong {
+    color: #e91e63;
+    letter-spacing: 0.5px;
+}
+
 /* Responsive Design */
 @media (max-width: 768px) {
     .content-section {
         padding: 1rem;
     }
     
-    .wishlist-preview {
+    .wishlist-preview, .offer-list {
         grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
         gap: 1rem;
     }
@@ -235,10 +362,21 @@ h3 {
         width: 50%;
         height: 150px;
     }
+    
+    .referral-code {
+        flex-direction: column;
+        align-items: stretch;
+    }
+    
+    .referral-code span {
+        margin-bottom: 0.8rem;
+        margin-right: 0;
+        text-align: center;
+    }
 }
 
 @media (max-width: 480px) {
-    .wishlist-preview {
+    .wishlist-preview, .offer-list {
         grid-template-columns: 1fr;
     }
     

@@ -1,262 +1,281 @@
-{% extends 'base.html' %}
-{% load custom_filters %}
-{% block content %}
-<div id="congratsPopup" class="congrats-popup">
-  <div class="congrats-content">
-    <span class="close-btn">&times;</span>
-    <h2>Congratulations!</h2>
-    <p>Your order has been placed successfully.</p>
-    <div class="confetti"></div>
-  </div>
-</div>
+{% extends "base.html" %}
 
+{% load static %}
+{% load custom_filters %}
+{% block css %}
 <style>
-  .congrats-popup {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background-color: rgba(0,0,0,0.5);
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    z-index: 1000;
-  }
-  
-  .congrats-content {
-    background-color: white;
-    padding: 30px;
-    border-radius: 10px;
-    text-align: center;
-    position: relative;
-    box-shadow: 0 4px 8px rgba(0,0,0,0.2);
-    max-width: 400px;
-    animation: popIn 0.5s;
-  }
-  
-  @keyframes popIn {
-    0% { transform: scale(0.5); opacity: 0; }
-    100% { transform: scale(1); opacity: 1; }
-  }
-  
-  .close-btn {
-    position: absolute;
-    top: 10px;
-    right: 15px;
-    font-size: 24px;
-    cursor: pointer;
-  }
-  
-  .congrats-content h2 {
-    color: #28a745;
-    margin-bottom: 15px;
-  }
-  
-  .confetti {
-    width: 100%;
-    height: 100px;
-    background: linear-gradient(90deg, #ff0000, #ff7700, #ffff00, #00ff00, #0000ff, #8b00ff);
-    background-size: 600% 600%;
-    animation: confettiBackground 5s ease infinite;
-    border-radius: 5px;
-    margin-top: 20px;
-  }
-  
-  @keyframes confettiBackground {
-    0% { background-position: 0% 50%; }
-    50% { background-position: 100% 50%; }
-    100% { background-position: 0% 50%; }
-  }
+    .success-container {
+        text-align: center;
+        padding: 50px 20px;
+        max-width: 800px;
+        margin: 0 auto;
+    }
+    
+    .success-illustration {
+        max-width: 200px;
+        margin-bottom: 30px;
+    }
+    
+    .success-title {
+        font-size: 28px;
+        font-weight: bold;
+        color: #2e7d32;
+        margin-bottom: 15px;
+    }
+    
+    .success-message {
+        font-size: 16px;
+        color: #555;
+        margin-bottom: 30px;
+    }
+    
+    .order-details {
+        background-color: #f9f9f9;
+        border-radius: 8px;
+        padding: 20px;
+        margin-top: 30px;
+        text-align: left;
+    }
+    
+    .order-details h3 {
+        color: #333;
+        border-bottom: 1px solid #ddd;
+        padding-bottom: 10px;
+        margin-bottom: 20px;
+    }
+    
+    .order-item {
+        display: flex;
+        justify-content: space-between;
+        margin-bottom: 15px;
+        padding-bottom: 15px;
+        border-bottom: 1px solid #eee;
+    }
+    
+    .order-item:last-child {
+        border-bottom: none;
+    }
+    
+    .item-details {
+        flex: 1;
+    }
+    
+    .item-price {
+        text-align: right;
+        min-width: 100px;
+    }
+    
+    .order-summary {
+        margin-top: 20px;
+        border-top: 2px solid #ddd;
+        padding-top: 15px;
+    }
+    
+    .summary-row {
+        display: flex;
+        justify-content: space-between;
+        margin-bottom: 10px;
+    }
+    
+    .total-row {
+        font-weight: bold;
+        font-size: 18px;
+        margin-top: 10px;
+        padding-top: 10px;
+        border-top: 1px solid #ddd;
+    }
+    
+    .action-buttons {
+        margin-top: 30px;
+        display: flex;
+        justify-content: center;
+        gap: 15px;
+    }
+    
+    .continue-button, .download-button, .print-button {
+        background-color: #2e7d32;
+        color: white;
+        border: none;
+        padding: 12px 24px;
+        border-radius: 4px;
+        font-weight: bold;
+        cursor: pointer;
+        text-decoration: none;
+        display: inline-block;
+        transition: background-color 0.3s;
+    }
+    
+    .continue-button:hover {
+        background-color: #1b5e20;
+    }
+    
+    .download-button {
+        background-color: #1976d2;
+    }
+    
+    .download-button:hover {
+        background-color: #1565c0;
+    }
+    
+    .print-button {
+        background-color: #757575;
+    }
+    
+    .print-button:hover {
+        background-color: #616161;
+    }
+    
+    /* Confetti container */
+    #confetti-container {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        pointer-events: none;
+        z-index: 9999;
+    }
+    
+    /* Print styles */
+    @media print {
+        body * {
+            visibility: hidden;
+        }
+        .order-details, .order-details * {
+            visibility: visible;
+        }
+        .order-details {
+            position: absolute;
+            left: 0;
+            top: 0;
+            width: 100%;
+        }
+        .action-buttons {
+            display: none;
+        }
+    }
 </style>
+<script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.5.1/dist/confetti.browser.min.js"></script>
+{% endblock %}
+
+{% block content %}
+<div id="confetti-container"></div>
+
+<div class="success-container" id="invoice-content">
+    <h1 class="success-title">Payment Successful!</h1>
+    <p class="success-message">
+        Your order has been placed successfully. Thank you for shopping with us!
+    </p>
+    
+    <div class="order-details">
+        <h3>Order Details</h3>
+        <p><strong>Payment ID:</strong> {{ payment_id }}</p>
+        <p><strong>Payment Method:</strong> {% if is_cod %}Cash on Delivery{% else %}Online Payment{% endif %}</p>
+        <p><strong>Order Date:</strong> {% now "F j, Y" %}</p>
+        
+        {% for order in orders %}
+        <div class="order-item">
+            <div class="item-details">
+                <h4>{{ order.product.name }}</h4>
+                <p>Quantity: {{ order.quantity }}</p>
+            </div>
+            <div class="item-price">
+                <p>₹{{ order.price }}</p>
+                <p>Total: ₹{{ order.quantity|multiply:order.price }}</p>
+            </div>
+        </div>
+        {% endfor %}
+        
+        <div class="order-summary">
+            <div class="summary-row">
+                <span>Subtotal:</span>
+                <span>₹{{ subtotal }}</span>
+            </div>
+            {% if discount %}
+            <div class="summary-row">
+                <span>Discount:</span>
+                <span>-₹{{ discount }}</span>
+            </div>
+            {% endif %}
+            <div class="summary-row">
+                <span>Convenience Fee:</span>
+                <span>₹99</span>
+            </div>
+            <div class="summary-row total-row">
+                <span>Total:</span>
+                <span>₹{{ total }}</span>
+            </div>
+        </div>
+    </div>
+    
+    <div class="action-buttons">
+        <a href="{% url 'index' %}" class="continue-button">Continue Shopping</a>
+        <button onclick="printInvoice()" class="print-button">Print Invoice</button>
+        <button onclick="downloadInvoice()" class="download-button">Download Invoice</button>
+    </div>
+</div>
 
 <script>
-  document.addEventListener('DOMContentLoaded', function() {
-    // Show popup when page loads
-    const popup = document.getElementById('congratsPopup');
-    
-    // Close popup when clicking the X
-    const closeBtn = document.querySelector('.close-btn');
-    closeBtn.addEventListener('click', function() {
-      popup.style.display = 'none';
+    // Run confetti animation when page loads
+    document.addEventListener('DOMContentLoaded', function() {
+        // Create confetti celebration
+        var duration = 3000;
+        var end = Date.now() + duration;
+        
+        (function frame() {
+            // Launch confetti from the sides
+            confetti({
+                particleCount: 5,
+                angle: 60,
+                spread: 55,
+                origin: { x: 0, y: 0.6 }
+            });
+            
+            confetti({
+                particleCount: 5,
+                angle: 120,
+                spread: 55,
+                origin: { x: 1, y: 0.6 }
+            });
+            
+            // Keep launching until duration is up
+            if (Date.now() < end) {
+                requestAnimationFrame(frame);
+            }
+        }());
+        
+        // Fire a celebratory burst in the center
+        setTimeout(function() {
+            confetti({
+                particleCount: 100,
+                spread: 70,
+                origin: { y: 0.6 }
+            });
+        }, 500);
     });
     
-    // Close popup when clicking outside
-    window.addEventListener('click', function(event) {
-      if (event.target === popup) {
-        popup.style.display = 'none';
-      }
-    });
+    // Print invoice function
+    function printInvoice() {
+        window.print();
+    }
     
-    // Auto close after 5 seconds
-    setTimeout(function() {
-      popup.style.display = 'none';
-    }, 5000);
-  });
+    // Download invoice as PDF function
+    function downloadInvoice() {
+        // Create a hidden element with invoice content
+        var element = document.getElementById('invoice-content');
+        var opt = {
+            margin: 1,
+            filename: 'ScentSpot_Invoice_{{ payment_id }}.pdf',
+            image: { type: 'jpeg', quality: 0.98 },
+            html2canvas: { scale: 2 },
+            jsPDF: { unit: 'in', format: 'letter', orientation: 'portrait' }
+        };
+        
+        // Use html2pdf library to generate PDF
+        html2pdf().set(opt).from(element).save();
+    }
 </script>
 
-<div class="container mt-5">
-    {% if error %}
-        <div class="alert alert-danger">
-            {{ error }}
-        </div>
-    {% elif is_cod %}
-        <div class="card">
-            <div class="card-body">
-                <h2 class="card-title text-success">
-                    <i class="fas fa-check-circle"></i> Order Placed Successfully!
-                </h2>
-                
-                <div class="order-details mt-4">
-                    <h4>Order Details</h4>
-                    <p><strong>Payment ID:</strong> {{ payment_id }}</p>
-                    <p><strong>Date:</strong> {{ orders.0.created_at|date:"F d, Y" }}</p>
-                    <p><strong>Payment Method:</strong> Cash on Delivery</p>
-                </div>
-
-                <div class="order-items mt-4">
-                    <h4>Ordered Items</h4>
-                    <table class="table">
-                        <thead>
-                            <tr>
-                                <th>Product</th>
-                                <th>Quantity</th>
-                                <th>Price</th>
-                                <th>Subtotal</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {% for order in orders %}
-                            <tr>
-                                <td>{{ order.product.name }}</td>
-                                <td>{{ order.quantity }}</td>
-                                <td>₹{{ order.price }}</td>
-                                <td>₹{{ order.quantity|multiply:order.price }}</td>
-                            </tr>
-                            {% endfor %}
-                        </tbody>
-                    </table>
-                    
-                    <div class="order-summary mt-3">
-                        <div class="row">
-                            <div class="col-md-6 offset-md-6">
-                                <table class="table">
-                                    <tr>
-                                        <th>Subtotal:</th>
-                                        <td>₹{{ subtotal }}</td>
-                                    </tr>
-                                    {% if discount %}
-                                    <tr>
-                                        <th>Discount:</th>
-                                        <td>-₹{{ discount }}</td>
-                                    </tr>
-                                    {% endif %}
-                                    <tr>
-                                        <th>Convenience Fee:</th>
-                                        <td>₹99</td>
-                                    </tr>
-                                    <tr class="table-active">
-                                        <th>Total:</th>
-                                        <td>₹{{ total }}</td>
-                                    </tr>
-                                </table>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="shipping-details mt-4">
-                    <h4>Shipping Details</h4>
-                    <p><strong>Name:</strong> {{ orders.0.customer.first_name }}</p>
-                    <p><strong>Email:</strong> {{ orders.0.customer.email }}</p>
-                    <p><strong>Shipping Address:</strong> {{ orders.0.adress }}</p>
-                </div>
-
-                <div class="text-center mt-4">
-                    <a href="{% url 'main' %}" class="btn btn-primary">Continue Shopping</a>
-                    <a href="#" class="btn btn-secondary" onclick="window.print()">Print Receipt</a>
-                </div>
-            </div>
-        </div>
-    {% else %}
-        <!-- Similar changes for non-COD orders -->
-        <div class="card">
-            <div class="card-body">
-                <h2 class="card-title text-success">
-                    <i class="fas fa-check-circle"></i> Payment Successful!
-                </h2>
-                
-                <div class="order-details mt-4">
-                    <h4>Order Details</h4>
-                    <p><strong>Order ID:</strong> {{ order.order_id }}</p>
-                    <p><strong>Payment ID:</strong> {{ order.payment_id }}</p>
-                    <p><strong>Date:</strong> {{ order.created_at|date:"F d, Y" }}</p>
-                </div>
-
-                <div class="order-items mt-4">
-                    <h4>Ordered Items</h4>
-                    <table class="table">
-                        <thead>
-                            <tr>
-                                <th>Product</th>
-                                <th>Quantity</th>
-                                <th>Price</th>
-                                <th>Subtotal</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {% for item in order_items %}
-                            <tr>
-                                <td>{{ item.product.name }}</td>
-                                <td>{{ item.quantity }}</td>
-                                <td>₹{{ item.price }}</td>
-                                <td>₹{{ item.quantity|multiply:item.price }}</td>
-                            </tr>
-                            {% endfor %}
-                        </tbody>
-                    </table>
-                    
-                    <div class="order-summary mt-3">
-                        <div class="row">
-                            <div class="col-md-6 offset-md-6">
-                                <table class="table">
-                                    <tr>
-                                        <th>Subtotal:</th>
-                                        <td>₹{{ subtotal }}</td>
-                                    </tr>
-                                    {% if discount %}
-                                    <tr>
-                                        <th>Discount:</th>
-                                        <td>-₹{{ discount }}</td>
-                                    </tr>
-                                    {% endif %}
-                                    <tr>
-                                        <th>Convenience Fee:</th>
-                                        <td>₹99</td>
-                                    </tr>
-                                    <tr class="table-active">
-                                        <th>Total:</th>
-                                        <td>₹{{ total }}</td>
-                                    </tr>
-                                </table>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="shipping-details mt-4">
-                    <h4>Shipping Details</h4>
-                    <p><strong>Name:</strong> {{ order.customer.first_name }}</p>
-                    <p><strong>Email:</strong> {{ order.customer.email }}</p>
-                    <p><strong>Shipping Address:</strong> {{ order.adress }}</p>
-                </div>
-
-                <div class="text-center mt-4">
-                    <a href="{% url 'main' %}" class="btn btn-primary">Continue Shopping</a>
-                    <a href="#" class="btn btn-secondary" onclick="window.print()">Print Receipt</a>
-                </div>
-            </div>
-        </div>
-    {% endif %}
-</div>
+<!-- Include html2pdf library for PDF generation -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 {% endblock %}

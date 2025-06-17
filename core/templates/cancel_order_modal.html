@@ -1,0 +1,84 @@
+<!-- Cancel Order Modal -->
+<div class="modal fade" id="cancelOrderModal" tabindex="-1" aria-labelledby="cancelOrderModalLabel" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="cancelOrderModalLabel">Cancel Order</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <form id="cancelOrderForm" method="post" action="{% url 'orders' %}">
+        {% csrf_token %}
+        <div class="modal-body">
+          <p>Are you sure you want to cancel this order?</p>
+          <input type="hidden" name="action" value="cancel_order">
+          <input type="hidden" name="order_id" id="cancelOrderId">
+          
+          <div class="mb-3">
+            <label for="cancelReason" class="form-label">Reason for cancellation</label>
+            <select class="form-select" id="cancelReason" name="cancel_reason" required>
+              <option value="">Select a reason</option>
+              <option value="Changed my mind">Changed my mind</option>
+              <option value="Found a better price elsewhere">Found a better price elsewhere</option>
+              <option value="Ordered by mistake">Ordered by mistake</option>
+              <option value="Delivery time too long">Delivery time too long</option>
+              <option value="Other">Other</option>
+            </select>
+          </div>
+          
+          <div class="mb-3 d-none" id="otherReasonDiv">
+            <label for="otherReason" class="form-label">Please specify</label>
+            <textarea class="form-control" id="otherReason" name="other_reason" rows="3"></textarea>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+          <button type="submit" class="btn btn-danger">Cancel Order</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<script>
+  document.addEventListener('DOMContentLoaded', function() {
+    // Show/hide "Other" reason text area
+    const reasonSelect = document.getElementById('cancelReason');
+    const otherReasonDiv = document.getElementById('otherReasonDiv');
+    const otherReasonInput = document.getElementById('otherReason');
+    
+    reasonSelect.addEventListener('change', function() {
+      if (this.value === 'Other') {
+        otherReasonDiv.classList.remove('d-none');
+        otherReasonInput.setAttribute('required', 'required');
+      } else {
+        otherReasonDiv.classList.add('d-none');
+        otherReasonInput.removeAttribute('required');
+      }
+    });
+    
+    // Set order ID when modal is opened
+    const cancelOrderModal = document.getElementById('cancelOrderModal');
+    if (cancelOrderModal) {
+      cancelOrderModal.addEventListener('show.bs.modal', function(event) {
+        const button = event.relatedTarget;
+        const orderId = button.getAttribute('data-order-id');
+        document.getElementById('cancelOrderId').value = orderId;
+      });
+    }
+    
+    // Handle form submission
+    const cancelOrderForm = document.getElementById('cancelOrderForm');
+    if (cancelOrderForm) {
+      cancelOrderForm.addEventListener('submit', function(e) {
+        const reason = reasonSelect.value;
+        if (reason === 'Other') {
+          const otherReason = otherReasonInput.value.trim();
+          if (!otherReason) {
+            e.preventDefault();
+            alert('Please specify the reason for cancellation');
+          }
+        }
+      });
+    }
+  });
+</script>

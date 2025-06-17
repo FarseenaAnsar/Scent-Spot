@@ -40,12 +40,48 @@
             </div>
             <div class="card col-8 content">
                 <div class="card-body">
-                    <h1 class="card-text heading">{{product.name}}</h1>
+                    <div class="d-flex justify-content-between align-items-start">
+                        <h1 class="card-text heading">{{product.name}}</h1>
+                        {% if request.user.is_authenticated %}
+                            <div class="wishlist-icon">
+                                {% if product|is_in_wishlist:request.user %}
+                                    <form action="{% url 'remove_from_wishlist' product.id %}" method="POST" class="d-inline">
+                                        {% csrf_token %}
+                                        <button type="submit" class="btn btn-link p-0">
+                                            <i class="fas fa-heart" style="color: red; font-size: 36px;"></i>
+                                        </button>
+                                    </form>
+                                {% else %}
+                                    <form action="{% url 'add_to_wishlist' product.id %}" method="POST" class="d-inline">
+                                        {% csrf_token %}
+                                        <button type="submit" class="btn btn-link p-0">
+                                            <i class="far fa-heart" style="font-size: 36px; color: black;"></i>
+                                        </button>
+                                    </form>
+                                {% endif %}
+                            </div>
+                        {% endif %}
+                    </div>
                     <p class="card-text size">({{product.size}})</p>
-                    <p class="card-text price">MRP: {{product.price|currency}}</p>
-                    <small class="tax">Inclusize of all taxes</small>
+                    
+                    <!-- Product Price with Offer Display -->
+                    {% if product.has_offer %}
+                        <div class="product-price mb-3">
+                            <h4>
+                                <span class="text-danger">₹{{ product.get_discount_price }}</span>
+                                <small class="text-muted"><del>₹{{ product.price }}</del></small>
+                                <span class="badge bg-success">{{ product.offer_details.discount_percentage }}% OFF</span>
+                            </h4>
+                            <p class="text-success">{{ product.offer_details.type }} offer: {{ product.offer_details.name }}</p>
+                        </div>
+                    {% else %}
+                        <p class="card-text price">MRP: {{product.price|currency}}</p>
+                    {% endif %}
+                    
+                    <small class="tax">Inclusive of all taxes</small>
                     <br>
-                    {% if product.rating is not None and product.rating != 0 %}
+                    <div class="product-rating mb-3">
+                        {% if product.rating is not None and product.rating != 0 %}
                             {% for i in product.rating|loop_counter %}
                                 <i class="fas fa-star" style="color:rgb(255, 234, 0);"></i>
                             {% endfor %}
@@ -54,6 +90,8 @@
                                 <i class="fas fa-star"></i>
                             {% endfor %}
                         {% endif %}
+                    </div>
+                    
                     <p class="card-text brand">{{product.brand}}</p>
                     {% if product.gender == "women" %}
                         <p class="card-text gen w_g flex">{{product.gender}}</p>
@@ -66,9 +104,9 @@
                     {% else %}
                         <p class="card-text flex type">{{product.category.name}}</p>
                     {% endif %}
+
                     <div class="find-perfume-section">
                         <div class="find-perfume-content">
-                            {% comment %} <h2>Not sure which perfume to choose?</h2> {% endcomment %}
                             <p>Let our AI help you find your perfect scent match!</p>
                             <a href="{% url 'perfume_finder' %}" class="find-perfume-link">
                                 <span class="icon">🔍</span>
@@ -79,13 +117,13 @@
                     
                     <br>
                     {% if out_of_stock or product.stock < 1 %}
-                        {% comment %} <div class="out-of-stock-label"></div> {% endcomment %}
                         <button class="btn btn-sm cartbtn" disabled>Add to Cart</button>
-                        {% comment %} <button class="btn btn-sm wishlistbtn" disabled>Add to Wishlist</button> {% endcomment %}
                     {% else %}
                         <form action="/products" method="POST" class="d-flex flex-row p-1">
                             {% csrf_token %}
-                            <input type="number" name="amount" value=1 min="1" max="2" class="form-control" />
+                            <div class="input-group mb-3" style="max-width: 200px;">
+                                <input type="number" name="amount" id="quantity" class="form-control text-center" value="1" min="1" max="3">
+                            </div>
                             <input hidden type="text" class="btn btn-primary btn-sm" value="{{product.id}}" name="prdid">
                             <input type="submit" class="btn btn-sm cartbtn" value="ADD TO CART">
                         </form>
@@ -100,6 +138,7 @@
                         {% endif %}
                     {% endif %}
                 </div>
+            </div>
         </div>
     </div>
     <div class="row flex">
@@ -110,20 +149,27 @@
                     <br>
                     <p class="card-text description">{{product.description}}</p>
                 </div>
+            </div>
         </div>
     </div>
     <!-- Similar Products Section -->
     <section class="similar-products">
-        <h3 class="section-title">Similar Products |</h3>
+        <h3 class="section-title">Similar Products</h3>
         <div class="similar-products-grid">
-            {% for similar in similar_products %}
+            {% for similar_product in similar_products %}
                 <div class="similar-product-card">
-                    <a class="product_btn" href="/products?product_id={{p.id}}">
-                      <img src="{{ similar.image.url }}" alt="{{ similar.name }}">    
-                        
+                    <a class="product_btn" href="/products?product_id={{similar_product.id}}">
+                        <img src="{{ similar_product.image.url }}" alt="{{ similar_product.name }}">    
                         <div class="similar-product-info">
-                            <h4>{{ similar.name }}</h4>
-                            <p class="price">${{ similar.price }}</p>
+                            <h4>{{ similar_product.name }}</h4>
+                            {% if similar_product.has_offer %}
+                                <p class="price">
+                                    <span class="text-danger">₹{{ similar_product.get_discount_price }}</span>
+                                    <small class="text-muted"><del>₹{{ similar_product.price }}</del></small>
+                                </p>
+                            {% else %}
+                                <p class="price">₹{{ similar_product.price }}</p>
+                            {% endif %}
                         </div>
                     </a>
                 </div>
@@ -134,51 +180,44 @@
 {% block js %}
     <script>
         document.addEventListener('DOMContentLoaded', function() {
-    const imageZoom = document.getElementById('imageZoom');
-    const mainImage = document.getElementById('mainImage');
-    
-    if (imageZoom && mainImage) {
-        // Set the image URL as a CSS variable
-        imageZoom.style.setProperty('--bg-image', `url(${mainImage.src})`);
-        
-        imageZoom.addEventListener('mousemove', (e) => {
-            // Show the zoom effect
-            imageZoom.style.setProperty('--display', 'block');
-            
-            // Calculate cursor position as percentage
-            const rect = imageZoom.getBoundingClientRect();
-            const x = (e.clientX - rect.left) / rect.width * 100;
-            const y = (e.clientY - rect.top) / rect.height * 100;
-            
-            // Set position for zoom effect
-            imageZoom.style.setProperty('--zoom-x', x + '%');
-            imageZoom.style.setProperty('--zoom-y', y + '%');
-        });
-        
-        imageZoom.addEventListener('mouseleave', () => {
-            imageZoom.style.setProperty('--display', 'none');
-        });
-        
-        // Update zoom image when main image changes
-        function changeMainImage(src) {
+            const imageZoom = document.getElementById('imageZoom');
             const mainImage = document.getElementById('mainImage');
-            mainImage.style.opacity = '0.5';
-            mainImage.src = src;
-            imageZoom.style.setProperty('--bg-image', `url(${src})`);
-            mainImage.onload = function() {
-                mainImage.style.opacity = '1';
-            };
-        }
-        
-        // Make changeMainImage available globally
-        window.changeMainImage = changeMainImage;
-    }
-});
+            
+            if (imageZoom && mainImage) {
+                // Set the image URL as a CSS variable
+                imageZoom.style.setProperty('--bg-image', `url(${mainImage.src})`);
+                
+                imageZoom.addEventListener('mousemove', (e) => {
+                    // Show the zoom effect
+                    imageZoom.style.setProperty('--display', 'block');
+                    
+                    // Calculate cursor position as percentage
+                    const rect = imageZoom.getBoundingClientRect();
+                    const x = (e.clientX - rect.left) / rect.width * 100;
+                    const y = (e.clientY - rect.top) / rect.height * 100;
+                    
+                    // Set position for zoom effect
+                    imageZoom.style.setProperty('--zoom-x', x + '%');
+                    imageZoom.style.setProperty('--zoom-y', y + '%');
+                });
+                
+                imageZoom.addEventListener('mouseleave', () => {
+                    imageZoom.style.setProperty('--display', 'none');
+                });
+            }
+        });
         
         function changeMainImage(src) {
             const mainImage = document.getElementById('mainImage');
             mainImage.style.opacity = '0.5';
             mainImage.src = src;
+            
+            // Update zoom image if it exists
+            const imageZoom = document.getElementById('imageZoom');
+            if (imageZoom) {
+                imageZoom.style.setProperty('--bg-image', `url(${src})`);
+            }
+            
             mainImage.onload = function() {
                 mainImage.style.opacity = '1';
             };
@@ -195,8 +234,6 @@
         
         function initializeImageSwitching() {
             const thumbnails = document.querySelectorAll('.thumb-img');
-            const mainImage = document.getElementById('mainImage');
-
             thumbnails.forEach(thumb => {
                 thumb.addEventListener('click', function(e) {
                     // Change main image with fade effect
@@ -205,6 +242,48 @@
                     // Update active thumbnail
                     updateActiveThumbnail(this);
                 });
+            });
+        }
+        
+        function incrementQuantity() {
+            const quantityInput = document.getElementById('quantity');
+            const maxQuantity = parseInt(quantityInput.getAttribute('max') || '{{ product.stock }}');
+            let currentQuantity = parseInt(quantityInput.value);
+            
+            if (currentQuantity < maxQuantity) {
+                quantityInput.value = currentQuantity + 1;
+            }
+        }
+        
+        function decrementQuantity() {
+            const quantityInput = document.getElementById('quantity');
+            let currentQuantity = parseInt(quantityInput.value);
+            
+            if (currentQuantity > 1) {
+                quantityInput.value = currentQuantity - 1;
+            }
+        }
+        
+        function addToWishlist(productId) {
+            fetch('/wishlist', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                    'X-CSRFToken': '{{ csrf_token }}'
+                },
+                body: `action=add&product_id=${productId}`
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    alert(data.message);
+                } else {
+                    alert(data.message || 'Error adding to wishlist');
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('Error adding to wishlist');
             });
         }
         

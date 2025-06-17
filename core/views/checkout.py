@@ -12,17 +12,32 @@ import time
 
 class CheckOut(LoginRequiredMixin, View):
     def get(self, request):
-        # Handle the initial checkout page display
+        # Handling the initial checkout page display
         cart_items = CartItem.objects.filter(user=request.user).select_related('product')
-        total = sum(item.product.price * item.quantity for item in cart_items)
         
-            # Get discount from session if available
-        discount = request.session.get('discount', 0)
+        # Calculate original total (without offers)
+        original_total = sum(item.product.price * item.quantity for item in cart_items)
+        
+        # Calculate total with offers
+        total_with_offers = 0
+        for item in cart_items:
+            if hasattr(item.product, 'has_offer') and item.product.has_offer:
+                total_with_offers += item.product.get_discount_price * item.quantity
+            else:
+                total_with_offers += item.product.price * item.quantity
+        
+        # Calculate offer discount
+        offer_discount = original_total - total_with_offers
+        
+        # Getting discount from session if available
+        coupon_discount = request.session.get('discount', 0)
         
         context = {
             'cart_items': cart_items,
-            'total': total,
-            'discount': discount,
+            'original_total': original_total,
+            'total': total_with_offers,
+            'offer_discount': offer_discount,
+            'discount': coupon_discount,
         }
         return render(request, 'pay.html', context)
     
@@ -45,6 +60,19 @@ class CheckOut(LoginRequiredMixin, View):
         try:
             # Create orders for each cart item
             for cart_item in cart_items:
+                # Check if product has enough stock
+                if cart_item.product.stock < cart_item.quantity:
+                    status = f"Not enough stock for {cart_item.product.name}. Only {cart_item.product.stock} available."
+                    return render(request, "cart.html", {
+                        "status": status, 
+                        "type": False, 
+                        "cart_items": cart_items
+                    })
+                
+                # Decrement product stock
+                cart_item.product.stock -= cart_item.quantity
+                cart_item.product.save()
+                
                 order = Order(
                     product=cart_item.product,
                     customer=cart_item.user,  # Assuming you're using Django's auth system
@@ -128,16 +156,30 @@ class PlaceCODOrderView(LoginRequiredMixin, View):
                 # Debug the customer object
                 print(f"Creating order with customer ID: {customer.id}, email: {customer.email}")
                 
+                # Check if product has enough stock
+                if item.product.stock < item.quantity:
+                    return JsonResponse({
+                        'status': 'error',
+                        'message': f'Not enough stock for {item.product.name}. Only {item.product.stock} available.'
+                    })
+                
+                # Decrement product stock
+                item.product.stock -= item.quantity
+                item.product.save()
+                
+                # Use discounted price if offer is available
+                price = item.product.get_discount_price if hasattr(item.product, 'has_offer') and item.product.has_offer else item.product.price
+                
                 order = Order(
                     product=item.product,
                     customer=customer,
                     quantity=item.quantity,
-                    price=item.product.price,
+                    price=price,
                     adress=address,
                     phone=phone,
                     order_id=order_id,
                     payment_id=payment_id,
-                    status="received"
+                    status="processing"
                 )
                 order.save()
                 
@@ -163,4 +205,3 @@ class PlaceCODOrderView(LoginRequiredMixin, View):
                 'status': 'error',
                 'message': str(e)
             })
-

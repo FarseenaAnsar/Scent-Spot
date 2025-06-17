@@ -4,6 +4,7 @@ from core.models.product import Product
 from core.models.rate import Rate
 from core.models.category import Category
 from django.views import View
+from django.db.models import Q
 import math
 
 class Index(View):
@@ -74,6 +75,11 @@ class Index(View):
         return render(request, "index.html", {"products": prds, "gender":gender, "sort":sort, "category":cat_ty, "brands":b, "applied_filters":applied_filters})
 
     def get(self, request):
+        # Check if this is a product list view request
+        if request.path == '/products/list/' or request.path.startswith('/products/category/'):
+            return self.product_list_view(request)
+            
+        # Regular index view
         cart = request.session.get("cart")  
         if cart == False:
             cart = {}
@@ -87,7 +93,7 @@ class Index(View):
             b.append(br["brand"])
         sort = ["Low To High", "High To Low"]
         gender = ["Male", "Female"]
-        return render(request, "index.html", {"products": prds, "gender":gender, "sort":sort, "category":cat_ty, "brands":b})
+        return render(request, "index.html", {"products": prds, "gender":gender, "sort":sort, "category":cat_ty, "brands":b, "show_advanced_filters": False})
 
     def filter_category(self, prds, category):
         num = []
@@ -111,3 +117,48 @@ class Index(View):
             else:
                 p.rating = 0
                 p.save()
+                
+    def product_list_view(self, request):
+        # Get category_id from URL if available
+        category_id = None
+        if request.path.startswith('/products/category/'):
+            try:
+                category_id = int(request.path.split('/')[-2])
+            except (ValueError, IndexError):
+                pass
+                
+        if category_id:
+            products = Product.get_spf_products(category_id)
+            category_name = products[0].category.name if products else "Products"
+        else:
+            products = Product.get_all_products()
+            category_name = "All Products"
+        
+        # Apply filters if provided
+        gender = request.GET.get('gender')
+        sort = request.GET.get('sort')
+        brand = request.GET.getlist('brand')
+        
+        if gender:
+            products = Product.gen_filter(gender, products)
+        
+        if sort:
+            products = Product.sorting(sort, products)
+        
+        if brand:
+            products = Product.brandfilter(brand, products)
+        
+        # Get all available brands for filter
+        all_brands = Product.get_brands()
+        
+        context = {
+            'products': products,
+            'category_name': category_name,
+            'all_brands': all_brands,
+            'selected_gender': gender,
+            'selected_sort': sort,
+            'selected_brands': brand,
+            'show_advanced_filters': True
+        }
+        
+        return render(request, 'index.html', context)

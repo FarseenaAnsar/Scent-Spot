@@ -76,9 +76,119 @@
           </div>
         </form>
         <br>
+        
+        <!-- Alternative Filters Section (from product_list.html) -->
+        {% if show_advanced_filters %}
+        <div class="container mt-4">
+          <div class="row">
+            <!-- Filters Sidebar -->
+            <div class="col-md-3">
+              <div class="card mb-4">
+                <div class="card-header bg-primary text-white">
+                  <h5 class="mb-0">Filters</h5>
+                </div>
+                <div class="card-body">
+                  <form method="get" id="filter-form">
+                    <div class="mb-3">
+                      <label class="form-label"><strong>Gender</strong></label>
+                      <div class="form-check">
+                        <input class="form-check-input" type="radio" name="gender" id="gender-all" value="" {% if not selected_gender %}checked{% endif %}>
+                        <label class="form-check-label" for="gender-all">All</label>
+                      </div>
+                      <div class="form-check">
+                        <input class="form-check-input" type="radio" name="gender" id="gender-male" value="Male" {% if selected_gender == 'Male' %}checked{% endif %}>
+                        <label class="form-check-label" for="gender-male">Men</label>
+                      </div>
+                      <div class="form-check">
+                        <input class="form-check-input" type="radio" name="gender" id="gender-female" value="Female" {% if selected_gender == 'Female' %}checked{% endif %}>
+                        <label class="form-check-label" for="gender-female">Women</label>
+                      </div>
+                    </div>
+                    
+                    <div class="mb-3">
+                      <label class="form-label"><strong>Sort By</strong></label>
+                      <select class="form-select" name="sort">
+                        <option value="" {% if not selected_sort %}selected{% endif %}>Default</option>
+                        <option value="Low To High" {% if selected_sort == 'Low To High' %}selected{% endif %}>Price: Low to High</option>
+                        <option value="High To Low" {% if selected_sort == 'High To Low' %}selected{% endif %}>Price: High to Low</option>
+                      </select>
+                    </div>
+                    
+                    <div class="mb-3">
+                      <label class="form-label"><strong>Brands</strong></label>
+                      {% for brand_dict in all_brands %}
+                        <div class="form-check">
+                          <input class="form-check-input" type="checkbox" name="brand" id="brand-{{ forloop.counter }}" value="{{ brand_dict.brand }}" {% if brand_dict.brand in selected_brands %}checked{% endif %}>
+                          <label class="form-check-label" for="brand-{{ forloop.counter }}">{{ brand_dict.brand }}</label>
+                        </div>
+                      {% endfor %}
+                    </div>
+                    
+                    <button type="submit" class="btn btn-primary w-100">Apply Filters</button>
+                  </form>
+                </div>
+              </div>
+            </div>
+            
+            <!-- Products Grid -->
+            <div class="col-md-9">
+              <h2 class="mb-4">{{ category_name|default:"All Products" }}</h2>
+              
+              <div class="row">
+                {% for product in products %}
+                <div class="col-md-4 mb-4">
+                  <div class="card h-100 product-card">
+                    <a href="{% url 'product_detail' product.id %}">
+                      <img src="{{ product.image.url }}" class="card-img-top" alt="{{ product.name }}">
+                    </a>
+                    <div class="card-body">
+                      <h5 class="card-title">{{ product.name }}</h5>
+                      <p class="card-text text-muted">{{ product.brand }}</p>
+                      
+                      <div class="product-rating mb-2">
+                        {% for i in "12345" %}
+                          {% if forloop.counter <= product.rating %}
+                            <i class="fas fa-star text-warning"></i>
+                          {% else %}
+                            <i class="far fa-star text-warning"></i>
+                          {% endif %}
+                        {% endfor %}
+                      </div>
+                      
+                      <div class="product-price mb-3">
+                        {% if product.has_offer %}
+                          <h5>
+                            <span class="text-danger">₹{{ product.get_discount_price }}</span>
+                            <small class="text-muted"><del>₹{{ product.price }}</del></small>
+                            <span class="badge bg-success">{{ product.offer_details.discount_percentage }}% OFF</span>
+                          </h5>
+                        {% else %}
+                          <h5>₹{{ product.price }}</h5>
+                        {% endif %}
+                      </div>
+                      
+                      <div class="d-flex justify-content-between">
+                        <a href="{% url 'product_detail' product.id %}" class="btn btn-sm btn-outline-primary">View Details</a>
+                        <button class="btn btn-sm btn-primary add-to-cart" data-product-id="{{ product.id }}">
+                          <i class="fas fa-shopping-cart"></i> Add to Cart
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                {% empty %}
+                <div class="col-12">
+                  <div class="alert alert-info">No products found matching your criteria.</div>
+                </div>
+                {% endfor %}
+              </div>
+            </div>
+          </div>
+        </div>
+        {% else %}
+        <!-- Original Products Display -->
         <div id="products" class="row-lg-9">
           <div class="row row-cols-3 p">
-            
             {% for p in products %}
                 <div class="card p_card" id="{{p.id}}">
                     <div class="img_wrapper">
@@ -89,7 +199,15 @@
                     <br>
                     <div class="card-body">
                         <p class="card-title p_name">{{p.name}}</p>
-                        <p class="card-text p_price">{{p.price|currency}}</p>
+                        {% if p.has_offer %}
+                          <p class="card-text p_price">
+                            <span class="text-danger">₹{{ p.get_discount_price }}</span>
+                            <small class="text-muted"><del>₹{{ p.price }}</del></small>
+                            <span class="badge bg-success">{{ p.offer_details.discount_percentage }}% OFF</span>
+                          </p>
+                        {% else %}
+                          <p class="card-text p_price">{{p.price|currency}}</p>
+                        {% endif %}
                         <p class="card-text p_brand">{{p.brand}}</p>
                         {% if p.rating != 0 %}
                             {% for i in p.rating|loop_counter %}
@@ -122,8 +240,52 @@
             {% endfor %}
           </div>
         </div>
+        {% endif %}
       </div>
     </div>
     
+<script>
+  document.addEventListener('DOMContentLoaded', function() {
+    // Handle add to cart buttons from product_list view
+    document.querySelectorAll('.add-to-cart').forEach(button => {
+      button.addEventListener('click', function() {
+        const productId = this.getAttribute('data-product-id');
+        
+        fetch('{% url "cart" %}', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+            'X-CSRFToken': '{{ csrf_token }}'
+          },
+          body: `action=add&product_id=${productId}&quantity=1`
+        })
+        .then(response => response.json())
+        .then(data => {
+          if (data.status === 'success') {
+            alert(data.message);
+            // Update cart count if you have a cart counter in your navbar
+            if (document.getElementById('cart-count')) {
+              document.getElementById('cart-count').textContent = data.cart_count;
+            }
+          } else {
+            alert(data.message || 'Error adding to cart');
+          }
+        })
+        .catch(error => {
+          console.error('Error:', error);
+          alert('Error adding to cart');
+        });
+      });
+    });
+    
+    // Auto-submit form when filters change (except for checkboxes)
+    if (document.getElementById('filter-form')) {
+      document.querySelectorAll('#filter-form input[type="radio"], #filter-form select').forEach(input => {
+        input.addEventListener('change', function() {
+          document.getElementById('filter-form').submit();
+        });
+      });
+    }
+  });
+</script>
 {% endblock %}
-

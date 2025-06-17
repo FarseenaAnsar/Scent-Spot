@@ -101,7 +101,44 @@ def user_signup(request):
     if request.method == 'POST':
         form = CustomUserCreationForm(request.POST)
         if form.is_valid():
-            form.save()  # Remove commit=False since we don't need to modify the user
+            user = form.save()
+            
+            # Handle referral code
+            referral_code = form.cleaned_data.get('referral_code')
+            if referral_code:
+                try:
+                    # Get the customer who referred this user
+                    referring_customer = Customer.objects.get(referral_code=referral_code)
+                    
+                    # Get or create the new customer
+                    new_customer = Customer.objects.get(email=user.username)
+                    new_customer.referred_by = referring_customer
+                    new_customer.save()
+                    
+                    # Create a referral offer for the referring customer
+                    from core.models.offer import ReferralOffer
+                    from django.utils import timezone
+                    import datetime
+                    
+                    # Create a unique coupon code for the referrer
+                    coupon_code = f"REF{new_customer.id}{referring_customer.id}"
+                    
+                    # Create an offer valid for 30 days
+                    valid_to = timezone.now() + datetime.timedelta(days=30)
+                    
+                    ReferralOffer.objects.create(
+                        name=f"Referral Bonus for {referring_customer.first_name}",
+                        discount_percentage=10,  # 10% discount
+                        valid_from=timezone.now(),
+                        valid_to=valid_to,
+                        active=True,
+                        code=coupon_code,
+                        max_uses=1
+                    )
+                    
+                except Customer.DoesNotExist:
+                    pass  # Invalid referral code, but user is already created
+            
             messages.success(request, 'Account created successfully! Please log in.')
             return redirect('login')
         else:

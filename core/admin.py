@@ -1,6 +1,6 @@
 from django.contrib import admin
 from django.utils.html import mark_safe
-from .models.product import Product
+from .models.product import Product, ProductImage, PerfumeAttributes
 from .models.category import Category
 from .models.customer import Customer
 from .models.order import Order
@@ -8,6 +8,7 @@ from .models.rate import Rate
 from .models.brand import Brand
 from core.models.coupon import Coupon
 from core.models import *
+from .models.offer import ProductOffer, CategoryOffer, ReferralOffer
 
 class AdminProduct(admin.ModelAdmin):
     list_display = ["name", "price", "brand", "gender", "size", "category"]
@@ -41,6 +42,30 @@ class CouponAdmin(admin.ModelAdmin):
     list_filter = ['active', 'valid_from', 'valid_to', 'discount_type']
     search_fields = ['code']
 
+class ProductImageInline(admin.TabularInline):
+    model = ProductImage
+    extra = 3
+
+class PerfumeAttributesInline(admin.StackedInline):
+    model = PerfumeAttributes
+    can_delete = False
+
+class ProductAdmin(admin.ModelAdmin):
+    list_display = ['name', 'price', 'category', 'stock', 'has_offer', 'get_discount_price']
+    list_filter = ['category', 'brand', 'gender']
+    search_fields = ['name', 'description']
+    inlines = [ProductImageInline, PerfumeAttributesInline]
+
+class ProductOfferAdmin(admin.ModelAdmin):
+    list_display = ['name', 'product', 'discount_percentage', 'valid_from', 'valid_to', 'active']
+    list_filter = ['active', 'valid_from', 'valid_to']
+    search_fields = ['name', 'product__name']
+
+class CategoryOfferAdmin(admin.ModelAdmin):
+    list_display = ['name', 'category', 'discount_percentage', 'valid_from', 'valid_to', 'active']
+    list_filter = ['active', 'valid_from', 'valid_to']
+    search_fields = ['name', 'category__name']
+    
 # Register your models here.
 admin.site.register(Product, AdminProduct)
 admin.site.register(Customer, AdminCustomer)
@@ -49,4 +74,6 @@ admin.site.register(Order, AdminOrder)
 admin.site.register(Rate, AdminRate)
 admin.site.register(Brand, AdminBrand)
 admin.site.register(Coupon, CouponAdmin)
-
+admin.site.register(ProductOffer)
+admin.site.register(CategoryOffer)
+admin.site.register(ReferralOffer)

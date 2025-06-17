@@ -32,8 +32,29 @@ urlpatterns = [
     path('adminhome/brands/add/', views.BrandCreateView.as_view(), name='brand_add'),
     path('adminhome/brands/edit/<int:pk>/', views.BrandUpdateView.as_view(), name='brand_edit'),
     path('adminhome/brands/delete/<int:pk>/', views.BrandDeleteView.as_view(), name='brand_delete'),
-
-    # path('sales-report/', views.sales_report, name='sales_report'),
-    # path('sales-chart-data/', views.sales_chart, name='sales_chart_data'),
     
+    # Product Offer URLs
+    path('adminhome/offers/product/', views.ProductOfferListView.as_view(), name='product_offer_list'),
+    path('adminhome/offers/product/add/', views.ProductOfferCreateView.as_view(), name='product_offer_create'),
+    path('adminhome/offers/product/edit/<int:pk>/', views.ProductOfferUpdateView.as_view(), name='product_offer_update'),
+    path('adminhome/offers/product/delete/<int:pk>/', views.ProductOfferDeleteView.as_view(), name='product_offer_delete'),
+    
+    # Category Offer URLs
+    path('adminhome/offers/category/', views.CategoryOfferListView.as_view(), name='category_offer_list'),
+    path('adminhome/offers/category/add/', views.CategoryOfferCreateView.as_view(), name='category_offer_create'),
+    path('adminhome/offers/category/edit/<int:pk>/', views.CategoryOfferUpdateView.as_view(), name='category_offer_update'),
+    path('adminhome/offers/category/delete/<int:pk>/', views.CategoryOfferDeleteView.as_view(), name='category_offer_delete'),
+    
+    # Referral Offer URLs
+    path('adminhome/offers/referral/', views.ReferralOfferListView.as_view(), name='referral_offer_list'),
+    path('adminhome/offers/referral/add/', views.ReferralOfferCreateView.as_view(), name='referral_offer_create'),
+    path('adminhome/offers/referral/edit/<int:pk>/', views.ReferralOfferUpdateView.as_view(), name='referral_offer_update'),
+    path('adminhome/offers/referral/delete/<int:pk>/', views.ReferralOfferDeleteView.as_view(), name='referral_offer_delete'),
+    
+    path('coupons/', views.CouponListView.as_view(), name='coupon_list'),
+    path('coupons/create/', views.CreateCouponView.as_view(), name='create_coupon'),
+    path('coupons/<int:pk>/edit/', views.EditCouponView.as_view(), name='edit_coupon'),
+    path('coupons/<int:pk>/delete/', views.DeleteCouponView.as_view(), name='delete_coupon'),
+
+    path('sales-report/', views.SalesReportView.as_view(), name='sales_report'),
 ] 

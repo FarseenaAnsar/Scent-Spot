@@ -12,6 +12,7 @@ from core.models.wishlist import Wishlist
 from core.models.wallet import Wallet
 from core.models.customer import Customer
 from core.models.address import Address
+from core.models.offer import ReferralOffer
 # from core.models.ordermanage import Ordermanage
 # from core.models.wallet import WalletView
 from core.forms import CustomerProfileForm
@@ -140,6 +141,10 @@ class Account(LoginRequiredMixin, View):
             # Get all required data for the account page
             customer = Customer.objects.get(email=self.request.user.username)
             
+            # Generate referral code if not exists
+            if not customer.referral_code:
+                customer.generate_referral_code()
+            
             # Fix phone field if it contains first_name value
             if customer.phone == customer.first_name:
                 customer.phone = ""
@@ -158,7 +163,33 @@ class Account(LoginRequiredMixin, View):
             # Get only this customer's orders
             orders = Order.objects.filter(customer=customer)
             
-            wishlist = Wishlist.objects.filter(user=self.request.user)
+            # Get discount from session
+            discount = self.request.session.get('discount', 0)
+            
+            # Add discount and convenience fee to each order
+            for order in orders:
+                order.discount = discount
+                order.convenience_fee = 99
+                order.final_total = (order.price * order.quantity) - discount + 99
+            
+            # Get cancelled orders
+            cancelled_orders = Order.objects.filter(customer=customer, status='cancelled')
+            
+            # Add discount and convenience fee to cancelled orders too
+            for order in cancelled_orders:
+                order.discount = discount
+                order.convenience_fee = 99
+                order.final_total = (order.price * order.quantity) - discount + 99
+            
+            # Get referral offers for this customer
+            referral_offers = ReferralOffer.objects.filter(
+                name__contains=f"Referral Bonus for {customer.first_name}",
+                active=True
+            )
+            
+            # Get referrals made by this customer
+            referrals = Customer.objects.filter(referred_by=customer)
+            
             wallet = Wallet.objects.filter(user=self.request.user).first()
             return_requests = ReturnRequest.objects.filter(order__customer=customer)
             addresses = Address.objects.filter(customer=customer)
@@ -166,7 +197,9 @@ class Account(LoginRequiredMixin, View):
             return {
                 'customer': customer,
                 'orders': orders,  # Only show this customer's orders
-                'wishlist': wishlist,
+                'cancelled_orders': cancelled_orders,  # Add cancelled orders to context
+                'referral_offers': referral_offers,
+                'referrals': referrals,
                 'wallet': wallet,
                 'return_requests': return_requests,
                 'addresses': addresses,
@@ -181,10 +214,14 @@ class Account(LoginRequiredMixin, View):
                 phone=""
             )
             
+            # Generate referral code for new customer
+            customer.generate_referral_code()
+            
             return {
                 'customer': customer,
                 'orders': [],
-                'wishlist': Wishlist.objects.filter(user=self.request.user),
+                'referral_offers': [],
+                'referrals': [],
                 'wallet': Wallet.objects.filter(user=self.request.user).first(),
                 'return_requests': [],
                 'addresses': [],

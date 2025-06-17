@@ -1,0 +1,55 @@
+{% extends 'adminoperations/admin_base.html' %}
+{% block content %}
+<div class="container mt-4">
+    <h2>Category Offers</h2>
+    <div class="d-flex justify-content-between mb-3">
+        <div>
+            <a href="{% url 'category_offer_create' %}" class="btn btn-primary">Add New Category Offer</a>
+        </div>
+    </div>
+    
+    <div class="card">
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-striped">
+                    <thead>
+                        <tr>
+                            <th>Name</th>
+                            <th>Category</th>
+                            <th>Discount</th>
+                            <th>Valid From</th>
+                            <th>Valid To</th>
+                            <th>Status</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for offer in offers %}
+                        <tr>
+                            <td>{{ offer.name }}</td>
+                            <td>{{ offer.category.name }}</td>
+                            <td>{{ offer.discount_percentage }}%</td>
+                            <td>{{ offer.valid_from|date:"M d, Y H:i" }}</td>
+                            <td>{{ offer.valid_to|date:"M d, Y H:i" }}</td>
+                            <td>
+                                <span class="badge {% if offer.status == 'Active' %}bg-success{% elif offer.status == 'Scheduled' %}bg-info{% elif offer.status == 'Expired' %}bg-danger{% else %}bg-secondary{% endif %}">
+                                    {{ offer.status }}
+                                </span>
+                            </td>
+                            <td>
+                                <a href="{% url 'category_offer_update' offer.id %}" class="btn btn-sm btn-primary">Edit</a>
+                                <a href="{% url 'category_offer_delete' offer.id %}" class="btn btn-sm btn-danger">Delete</a>
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="7" class="text-center">No category offers found</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -32,7 +32,7 @@
                         <p>
                             <strong>Customer:</strong> 
                             {% if order.customer and order.customer.first_name %}
-                                {{ order.customer.first_name }}
+                                {{ order.customer.email }}
                             {% else %}
                                 <span class="text-muted">No customer name</span>
                             {% endif %}

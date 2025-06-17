@@ -19,13 +19,14 @@ class Order(models.Model):
     adress = models.CharField(max_length=50, default="", blank=True)
     phone = models.CharField(max_length=10, default="", blank=True)
     date = models.DateField(default=timezone.now)
-    status = models.TextField(max_length=50, choices=STATUS_CHOICES, default="received")
+    status = models.TextField(max_length=50, choices=STATUS_CHOICES, default="processing")
     rating = models.IntegerField(default=0, validators=[MinValueValidator(0),MaxValueValidator(5)])
     payment_id = models.CharField(max_length=100,null=True,blank=True)
     order_id = models.CharField(max_length=100,null=True,blank=True)
     created_at = models.DateTimeField(default=timezone.now)
     delivered_at = models.DateTimeField(null=True, blank=True)
     cancelled_at = models.DateTimeField(null=True, blank=True)
+    cancel_reason = models.TextField(max_length=500, null=True, blank=True)
     
 
     @staticmethod

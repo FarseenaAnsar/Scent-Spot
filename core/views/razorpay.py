@@ -10,35 +10,52 @@ import razorpay
 from django.conf import settings
 import time
 from core.models.wishlist import Wishlist
+from django.views.generic import TemplateView
 
 
 class razorpaycheck(LoginRequiredMixin, View):
     def get(self, request):
         cart_items = CartItem.objects.filter(user=request.user).select_related('product')
-        total = sum(item.product.price * item.quantity for item in cart_items)
+        
+        # Calculate original total (without offers)
+        original_total = sum(item.product.price * item.quantity for item in cart_items)
+        
+        # Calculate total with offers
+        total_with_offers = 0
+        for item in cart_items:
+            if hasattr(item.product, 'has_offer') and item.product.has_offer:
+                total_with_offers += item.product.get_discount_price * item.quantity
+            else:
+                total_with_offers += item.product.price * item.quantity
+        
+        # Get discount from session
+        discount = request.session.get('discount', 0)
+        
+        # Calculate final amount including discount and convenience fee
+        final_amount = total_with_offers - discount + 99  # Add convenience fee
         
         return JsonResponse({
-            "amount": total * 100,
+            "amount": final_amount * 100,  # Convert to paise
             "key": settings.RAZORPAY_KEY_ID
         })
         
     def post(self, request):
-        cart_items = CartItem.objects.filter(user=request.user).select_related('product')
-        total = sum(item.product.price * item.quantity for item in cart_items)
+        # Get the total from the form which already includes discount and convenience fee
+        total = float(request.POST.get('total', 0))
         
         # Initialize Razorpay client
         client = razorpay.Client(auth=(settings.RAZORPAY_KEY_ID, settings.RAZORPAY_KEY_SECRET))
         
-        # Create Razorpay order
+        # Create Razorpay order using the total from the form
         payment = client.order.create({
-            "amount": total * 100,  # Amount in paise
+            "amount": int(total * 100),  # Amount in paise
             "currency": "INR",
             "payment_capture": "1"
         })
         
         return JsonResponse({
             "order_id": payment['id'],
-            "amount": total * 100,
+            "amount": int(total * 100),
             "key": settings.RAZORPAY_KEY_ID,
             "name": request.POST.get('fname'),
             "email": request.POST.get('email'),
@@ -53,10 +70,6 @@ class razorpaycheck(LoginRequiredMixin, View):
                 'total': int(total)
             })
         
-from django.views.generic import TemplateView
-from django.views import View
-from core.models import Order  # Assuming you have these models
-
 class VerifyPaymentView(View):
     def post(self, request):
         payment_id = request.POST.get('payment_id')
@@ -72,24 +85,53 @@ class VerifyPaymentView(View):
                 'razorpay_signature': signature
             })
             
-            # Create order record
-            cart_items = CartItem.objects.filter(user=request.customer)
-            order = Order.objects.create(
-                customer=request.customer,
-                payment_id=payment_id,
-                order_id=order_id,
-                total_amount=request.POST.get('amount'),
-                status='PAID'
-            )
+            # Get cart items
+            cart_items = CartItem.objects.filter(user=request.user).select_related('product')
             
-            # Create order items
-            for item in cart_items:
-                Order.objects.create(
-                    order=order,
-                    product=item.product,
-                    quantity=item.quantity,
-                    price=item.product.price
+            # Get or create customer
+            try:
+                customer = Customer.objects.get(email=request.user.username)
+            except Customer.DoesNotExist:
+                customer = Customer.objects.create(
+                    email=request.user.username,
+                    first_name=request.user.first_name,
+                    phone=""
                 )
+            
+            # Create orders for each cart item
+            for item in cart_items:
+                # Check if product has enough stock
+                if item.product.stock < item.quantity:
+                    from django.urls import reverse
+                    error_message = f'Not enough stock for {item.product.name}. Only {item.product.stock} available.'
+                    return JsonResponse({
+                        'status': 'error',
+                        'message': error_message,
+                        'redirect_url': f"{reverse('payment_failure')}?error_message={error_message}"
+                    })
+                
+                # Decrement product stock
+                item.product.stock -= item.quantity
+                item.product.save()
+                
+                # Use discounted price if offer is available
+                price = item.product.get_discount_price if hasattr(item.product, 'has_offer') and item.product.has_offer else item.product.price
+                
+                order = Order(
+                    product=item.product,
+                    customer=customer,
+                    quantity=item.quantity,
+                    price=price,
+                    adress=request.POST.get('address', ''),
+                    phone=request.POST.get('phone', ''),
+                    order_id=order_id,
+                    payment_id=payment_id,
+                    status="processing"
+                )
+                order.save()
+                
+                # Remove from wishlist if present
+                Wishlist.objects.filter(user=request.user, product=item.product).delete()
             
             # Clear the cart
             cart_items.delete()
@@ -97,7 +139,16 @@ class VerifyPaymentView(View):
             return JsonResponse({'status': 'success'})
             
         except Exception as e:
-            return JsonResponse({'status': 'error', 'message': str(e)})
+            import traceback
+            from django.urls import reverse
+            print(f"Payment Verification Error: {str(e)}")
+            print(traceback.format_exc())
+            error_message = str(e)
+            return JsonResponse({
+                'status': 'error', 
+                'message': error_message,
+                'redirect_url': f"{reverse('payment_failure')}?error_message={error_message}"
+            })
 
 class PlaceCODOrderView(LoginRequiredMixin, View):
     def post(self, request):
@@ -118,9 +169,12 @@ class PlaceCODOrderView(LoginRequiredMixin, View):
             cart_items = CartItem.objects.filter(user=request.user).select_related('product')
             
             if not cart_items:
+                from django.urls import reverse
+                error_message = 'Your cart is empty'
                 return JsonResponse({
                     'status': 'error',
-                    'message': 'Your cart is empty'
+                    'message': error_message,
+                    'redirect_url': f"{reverse('payment_failure')}?error_message={error_message}"
                 })
             
             # Get or create customer - use a single clean approach
@@ -137,16 +191,33 @@ class PlaceCODOrderView(LoginRequiredMixin, View):
             
             # Create orders for each cart item
             for item in cart_items:
+                # Check if product has enough stock
+                if item.product.stock < item.quantity:
+                    from django.urls import reverse
+                    error_message = f'Not enough stock for {item.product.name}. Only {item.product.stock} available.'
+                    return JsonResponse({
+                        'status': 'error',
+                        'message': error_message,
+                        'redirect_url': f"{reverse('payment_failure')}?error_message={error_message}"
+                    })
+                
+                # Decrement product stock
+                item.product.stock -= item.quantity
+                item.product.save()
+                
+                # Use discounted price if offer is available
+                price = item.product.get_discount_price if hasattr(item.product, 'has_offer') and item.product.has_offer else item.product.price
+                
                 order = Order(
                     product=item.product,
                     customer=customer,
                     quantity=item.quantity,
-                    price=item.product.price,
+                    price=price,
                     adress=address,
                     phone=phone,
                     order_id=order_id,
                     payment_id=payment_id,
-                    status="received"
+                    status="processing"
                 )
                 
                 print(f"DEBUG: All orders in database: {Order.objects.all().count()}")
@@ -188,16 +259,18 @@ class PlaceCODOrderView(LoginRequiredMixin, View):
             
         except Exception as e:
             import traceback
+            from django.urls import reverse
             print(f"COD Order Error: {str(e)}")
             print(traceback.format_exc())
+            error_message = str(e)
             return JsonResponse({
                 'status': 'error',
-                'message': str(e)
+                'message': error_message,
+                'redirect_url': f"{reverse('payment_failure')}?error_message={error_message}"
             })
             
 class PaymentSuccessView(LoginRequiredMixin, TemplateView):
     template_name = 'payment_success.html'
-    
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         payment_id = kwargs.get('payment_id')
@@ -206,38 +279,30 @@ class PaymentSuccessView(LoginRequiredMixin, TemplateView):
         discount = self.request.session.get('discount', 0)
         
         try:
-            # Checking if it's a COD order (payment_id starts with COD-)
-            if payment_id.startswith('COD-'):
-                orders = Order.objects.filter(payment_id=payment_id)
-                if orders.exists():
-                    context['orders'] = orders
-                    context['is_cod'] = True
-                    context['payment_id'] = payment_id
-                    
-                    # Calculate subtotal
-                    subtotal = sum(order.price * order.quantity for order in orders)
-                    context['subtotal'] = subtotal
-                    context['discount'] = discount
-                    context['total'] = subtotal - discount + 99  # Add convenience fee
-                else:
-                    context['error'] = 'Order not found'
+            # Get all orders with this payment_id
+            orders = Order.objects.filter(payment_id=payment_id)
+            
+            if orders.exists():
+                context['orders'] = orders
+                context['is_cod'] = payment_id.startswith('COD-')
+                context['payment_id'] = payment_id
+                
+                # Calculate subtotal
+                subtotal = sum(order.price * order.quantity for order in orders)
+                context['subtotal'] = subtotal
+                context['discount'] = discount
+                context['total'] = subtotal - discount + 99  # Add convenience fee
             else:
-                # Handle regular Razorpay orders
-                try:
-                    order = Order.objects.get(payment_id=payment_id, customer__email=self.request.user.email)
-                    context['order'] = order
-                    context['order_items'] = order.orderitem_set.all()
-                    
-                    # Calculate subtotal
-                    subtotal = order.price
-                    context['subtotal'] = subtotal
-                    context['discount'] = discount
-                    context['total'] = subtotal - discount + 99  
-                except Order.DoesNotExist:
-                    context['error'] = 'Order not found'
+                context['error'] = 'Order not found'
+                print(f"No orders found with payment_id: {payment_id}")
+                # Debug info
+                user_orders = Order.objects.filter(customer__email=self.request.user.username)
+                print(f"User has {user_orders.count()} orders with payment IDs: {[o.payment_id for o in user_orders]}")
+                
         except Exception as e:
+            import traceback
+            print(f"Error in PaymentSuccessView: {str(e)}")
+            print(traceback.format_exc())
             context['error'] = str(e)
         
         return context
-
-

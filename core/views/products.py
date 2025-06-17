@@ -12,6 +12,7 @@ from sklearn.preprocessing import MultiLabelBinarizer
 from sklearn.metrics.pairwise import cosine_similarity
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
+from core.utils.offer_utils import get_offer_details
 
 class Products(View):
     def post(self, request):
@@ -32,6 +33,12 @@ class Products(View):
             similar_products = product.get_similar_products()
             additional_images = product.additional_images.all()   #aditional images
             
+            # Get perfume attributes if they exist
+            try:
+                perfume_attributes = PerfumeAttributes.objects.get(product=product)
+            except PerfumeAttributes.DoesNotExist:
+                perfume_attributes = None
+            
             # Check if product is in stock
             if product.stock < 1:
                 messages.error(request, f"{product.name} is out of stock!")
@@ -40,6 +47,7 @@ class Products(View):
                     "cat_type": type2,
                     "similar_products": similar_products,
                     "additional_images": additional_images,
+                    "perfume_attributes": perfume_attributes,
                     "out_of_stock": True
                 })
             
@@ -93,6 +101,7 @@ class Products(View):
                 "cat_type": type2,
                 "similar_products": similar_products,
                 "additional_images": additional_images,
+                "perfume_attributes": perfume_attributes,
                 "out_of_stock": product.stock < 1
             })
         
@@ -114,11 +123,18 @@ class Products(View):
                 similar_products = product.get_similar_products()
                 additional_images = product.additional_images.all()
                 
+                # Get perfume attributes if they exist
+                try:
+                    perfume_attributes = PerfumeAttributes.objects.get(product=product)
+                except PerfumeAttributes.DoesNotExist:
+                    perfume_attributes = None
+                
                 return render(request, "products.html", {
                     "product": p_obj[0],
                     "cat_type": type2,
                     "similar_products": similar_products,
                     "additional_images": additional_images,
+                    "perfume_attributes": perfume_attributes,
                     "out_of_stock": product.stock < 1
                 })
             except (Product.DoesNotExist, ValueError):
@@ -162,7 +178,45 @@ class Products(View):
                     image=image
                 )
             return redirect('products')
-    
+
+
+class ProductListView(View):
+    def get(self, request, category_id=None):
+        if category_id:
+            products = Product.get_spf_products(category_id)
+            category_name = products[0].category.name if products else "Products"
+        else:
+            products = Product.get_all_products()
+            category_name = "All Products"
+        
+        # Apply filters if provided
+        gender = request.GET.get('gender')
+        sort = request.GET.get('sort')
+        brand = request.GET.getlist('brand')
+        
+        if gender:
+            products = Product.gen_filter(gender, products)
+        
+        if sort:
+            products = Product.sorting(sort, products)
+        
+        if brand:
+            products = Product.brandfilter(brand, products)
+        
+        # Get all available brands for filter
+        all_brands = Product.get_brands()
+        
+        context = {
+            'products': products,
+            'category_name': category_name,
+            'all_brands': all_brands,
+            'selected_gender': gender,
+            'selected_sort': sort,
+            'selected_brands': brand,
+        }
+        
+        return render(request, 'product_list.html', context)
+
 
 class PerfumeFinder(View):
     def get(self, request):
@@ -217,5 +271,3 @@ class PerfumeFinder(View):
         return render(request, 'perfume_finder.html', {
             'recommendations': recommended_perfumes
         })
-        
-

@@ -49,6 +49,20 @@
                 <i class="bi bi-cart"></i>orders</a>
             <a class="navbar-brand" href="{% url 'brand_list' %}">
                 <i class="bi bi-stars"></i>Brands</a>
+            <a class="navbar-brand" href="{% url 'coupon_list' %}">
+                <i class="bi bi-ticket-perforated"></i>Coupons</a>
+            <div class="dropdown d-inline">
+                <a class="navbar-brand dropdown-toggle" href="#" role="button" id="offersDropdown" data-bs-toggle="dropdown" aria-expanded="false">
+                    <i class="bi bi-percent"></i>Offers
+                </a>
+                <ul class="dropdown-menu" aria-labelledby="offersDropdown">
+                    <li><a class="dropdown-item" href="{% url 'product_offer_list' %}">Product Offers</a></li>
+                    <li><a class="dropdown-item" href="{% url 'category_offer_list' %}">Category Offers</a></li>
+                    <li><a class="dropdown-item" href="{% url 'referral_offer_list' %}">Referral Offers</a></li>
+                </ul>
+            </div>
+            <a class="navbar-brand" href="{% url 'sales_report' %}">
+                <i class="bi bi-graph-up"></i>Sales Report</a>
             <button class="navbar-toggler" type="button" data-bs-toggle="collapse" 
                     data-bs-target="#navbarNav" aria-controls="navbarNav" 
                     aria-expanded="false" aria-label="Toggle navigation">

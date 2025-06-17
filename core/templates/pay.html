@@ -21,13 +21,23 @@
           <br><br>
           <table class="table table-striped table-hover">
             <tr>
-                <th>Cart value</th>
-                <td>{{total}}</td>
+                <th>Original Cart Value</th>
+                <td>{{original_total|currency}}</td>
             </tr>
+            {% if offer_discount %}
+            <tr>
+                <th>Product Offers</th>
+                <td class="text-success">-{{offer_discount|currency}}</td>
+            </tr>
+            <tr>
+                <th>Cart Value After Offers</th>
+                <td>{{total|currency}}</td>
+            </tr>
+            {% endif %}
             {% if discount %}
             <tr>
-                <th>Discount</th>
-                <td>-{{discount|currency}}</td>
+                <th>Coupon Discount</th>
+                <td class="text-success">-{{discount|currency}}</td>
             </tr>
             {% endif %}
             <tr>
@@ -98,38 +108,90 @@
 
   <script>
     $(document).ready(function() {
-  $("#place-order-btn").click(function() {
-    const paymentMethod = $('input[name="payment_method"]:checked').val();
-    const form = $('#payment-form');
-    
-    if (paymentMethod === 'cod') {
-      // Submit to COD endpoint
-      form.attr('action', "{% url 'place_cod_order' %}");
-      
-      // Use AJAX to submit the form
-      $.ajax({
-        type: "POST",
-        url: form.attr('action'),
-        data: form.serialize(),
-        success: function(response) {
-          if (response.status === 'success') {
-            // Redirect to the success page
-            window.location.href = response.redirect_url;
-          } else {
-            alert(response.message || "Error processing your order");
-          }
-        },
-        error: function() {
-          alert("Error processing your order. Please try again.");
+      $("#place-order-btn").click(function(e) {
+        e.preventDefault(); // Prevent default form submission
+        const paymentMethod = $('input[name="payment_method"]:checked').val();
+        const form = $('#payment-form');
+        
+        if (paymentMethod === 'cod') {
+          // Submit to COD endpoint
+          $.ajax({
+            type: "POST",
+            url: "{% url 'place_cod_order' %}",
+            data: form.serialize(),
+            success: function(response) {
+              if (response.status === 'success') {
+                window.location.href = response.redirect_url;
+              } else {
+                alert(response.message || "Error processing your order");
+              }
+            },
+            error: function() {
+              alert("Error processing your order. Please try again.");
+            }
+          });
+        } else {
+          // For Razorpay payment
+          $.ajax({
+            type: "POST",
+            url: "{% url 'razorpaycheck' %}",
+            data: form.serialize(), // This includes the total with discount and convenience fee
+            dataType: 'json',
+            success: function(response) {
+              var options = {
+                key: response.key,
+                amount: response.amount,
+                currency: "INR",
+                name: "ScentSpot",
+                description: "Purchase from ScentSpot",
+                order_id: response.order_id,
+                handler: function(paymentResponse) {
+                  // On successful payment
+                  $.ajax({
+                    type: "POST",
+                    url: "{% url 'verify_payment' %}",
+                    data: {
+                      'payment_id': paymentResponse.razorpay_payment_id,
+                      'order_id': paymentResponse.razorpay_order_id,
+                      'signature': paymentResponse.razorpay_signature,
+                      'address': $("#address").val(),
+                      'phone': $("#phone").val(),
+                      'fname': $("#name").val(),
+                      'email': $("#email").val(),
+                      'csrfmiddlewaretoken': $("input[name='csrfmiddlewaretoken']").val()
+                    },
+                    success: function(serverResponse) {
+                      if (serverResponse.status === 'success') {
+                        window.location.href = "/payment-success/" + paymentResponse.razorpay_payment_id + "/";
+                      } else {
+                        alert(serverResponse.message || "Payment verification failed");
+                      }
+                    }
+                  });
+                },
+                prefill: {
+                  name: $("#name").val(),
+                  email: $("#email").val(),
+                  contact: $("#phone").val()
+                },
+                theme: {
+                  color: "#3399cc"
+                }
+              };
+              
+              // Initialize Razorpay
+              var rzp1 = new Razorpay(options);
+              rzp1.open();
+            },
+            error: function(xhr, status, error) {
+              console.error("Error:", error);
+              alert("Error processing your payment request. Please try again.");
+            }
+          });
         }
       });
-    } else {
-      // Submit to Razorpay endpoint
-      form.attr('action', "{% url 'razorpaycheck' %}");
-      form.submit();
-    }
-  });
-});
+    });
+  </script>
 
   </script>
 </body>

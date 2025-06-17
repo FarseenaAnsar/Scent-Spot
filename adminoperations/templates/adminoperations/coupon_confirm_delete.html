@@ -1,0 +1,55 @@
+{% extends 'adminoperations/admin_base.html' %}
+
+{% block title %}Delete Coupon{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row justify-content-center">
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header bg-danger text-white">
+                    <h3 class="mb-0">Delete Coupon</h3>
+                </div>
+                <div class="card-body">
+                    <p class="alert alert-warning">
+                        Are you sure you want to delete the coupon <strong>{{ coupon.code }}</strong>?
+                        This action cannot be undone.
+                    </p>
+                    
+                    <div class="mb-4">
+                        <h5>Coupon Details:</h5>
+                        <ul class="list-group">
+                            <li class="list-group-item">
+                                <strong>Code:</strong> {{ coupon.code }}
+                            </li>
+                            <li class="list-group-item">
+                                <strong>Type:</strong> {{ coupon.get_discount_type_display }}
+                            </li>
+                            <li class="list-group-item">
+                                <strong>Value:</strong> 
+                                {% if coupon.discount_type == 'percentage' %}
+                                    {{ coupon.discount_value }}%
+                                {% else %}
+                                    ₹{{ coupon.discount_value }}
+                                {% endif %}
+                            </li>
+                            <li class="list-group-item">
+                                <strong>Valid Period:</strong> 
+                                {{ coupon.valid_from|date:"M d, Y" }} to {{ coupon.valid_to|date:"M d, Y" }}
+                            </li>
+                        </ul>
+                    </div>
+                    
+                    <form method="post">
+                        {% csrf_token %}
+                        <div class="d-flex justify-content-between">
+                            <a href="{% url 'coupon_list' %}" class="btn btn-secondary">Cancel</a>
+                            <button type="submit" class="btn btn-danger">Delete</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

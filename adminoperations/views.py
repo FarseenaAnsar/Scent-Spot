@@ -8,7 +8,7 @@ from django.shortcuts import redirect
 from django.urls import reverse_lazy, reverse
 from django.contrib import messages
 from django.http import HttpResponseRedirect
-from django.contrib.auth.mixins import LoginRequiredMixin
+from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
 from django.db.models import Count, Sum
 from django.conf import settings
 import os
@@ -18,10 +18,17 @@ from core.models.product import Product
 from core.models.customer import Customer
 from core.models.category import Category
 from core.models.brand import Brand
-from .forms import CategoryForm
+from core.models.offer import ProductOffer, CategoryOffer, ReferralOffer
+from .forms import CategoryForm, ProductForm, ProductOfferForm, CategoryOfferForm, ReferralOfferForm
 from django.db.models import Q, F
-from .forms import ProductForm
 from django.utils import timezone  
+from core.models.coupon import Coupon
+from django.shortcuts import render, redirect, get_object_or_404
+from django import forms
+from django.db.models import Sum, Count, F, DecimalField
+from django.db.models.functions import TruncDate, TruncWeek, TruncMonth, TruncYear
+from datetime import datetime, timedelta
+
 
 class StaffRequiredMixin(LoginRequiredMixin):
     """Mixin that requires the user to be staff"""
@@ -302,7 +309,49 @@ class AdminOrderListView(StaffRequiredMixin, ListView):
     
     def get_queryset(self):
         # Get orders in descending order by date
-        return Order.objects.select_related('customer', 'product').all().order_by('-date')
+        queryset = Order.objects.select_related('customer', 'product').all().order_by('-date')
+        
+        # Process each order to ensure customer data is available and calculate final price
+        processed_orders = []
+        for order in queryset:
+            # If customer is None, try to find or create one based on available data
+            if not order.customer and hasattr(order, 'user'):
+                try:
+                    # Try to find customer by email if user is available
+                    customer = Customer.objects.get(email=order.user.username)
+                    order.customer = customer
+                    order.save()
+                except (Customer.DoesNotExist, AttributeError):
+                    pass
+            
+            # Calculate original price
+            original_price = order.price
+            
+            # Calculate product offer discount (if applicable)
+            product_discount = 0
+            if hasattr(order.product, 'has_offer') and order.product.has_offer:
+                product_discount = (order.product.price - order.product.get_discount_price) * order.quantity
+            
+            # Calculate coupon discount (if applicable)
+            coupon_discount = 0
+            if hasattr(order, 'coupon_discount'):
+                coupon_discount = order.coupon_discount
+            
+            # Add convenience fee
+            convenience_fee = 99  # ₹99
+            
+            # Calculate subtotal after product discounts
+            subtotal = original_price * order.quantity - product_discount
+            
+            # Calculate final total
+            final_total = subtotal - coupon_discount + convenience_fee
+            
+            # Add calculated values to order object
+            order.final_total = final_total
+            
+            processed_orders.append(order)
+            
+        return queryset
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
@@ -312,6 +361,54 @@ class AdminOrderListView(StaffRequiredMixin, ListView):
         context['is_paginated'] = page_obj.has_other_pages()
         context['total_pages'] = paginator.num_pages
         context['total_orders'] = paginator.count
+        
+        # Process orders to ensure customer names are available in the template
+        orders_with_names = []
+        for order in context['orders']:
+            if order.customer:
+                # Ensure first_name and last_name are not None
+                if not order.customer.first_name:
+                    order.customer.first_name = "Customer"
+                    order.customer.save()
+                
+                # Calculate final price if not already done
+                if not hasattr(order, 'final_total'):
+                    # Calculate original price
+                    original_price = order.price
+                    
+                    # Calculate product offer discount (if applicable)
+                    product_discount = 0
+                    if hasattr(order.product, 'has_offer') and order.product.has_offer:
+                        product_discount = (order.product.price - order.product.get_discount_price) * order.quantity
+                    
+                    # Calculate coupon discount (if applicable)
+                    coupon_discount = 0
+                    if hasattr(order, 'coupon_discount'):
+                        coupon_discount = order.coupon_discount
+                    
+                    # Add convenience fee
+                    convenience_fee = 99  # ₹99
+                    
+                    # Calculate subtotal after product discounts
+                    subtotal = original_price * order.quantity - product_discount
+                    
+                    # Calculate final total
+                    order.final_total = subtotal - coupon_discount + convenience_fee
+                
+                # Add the processed order
+                orders_with_names.append(order)
+            else:
+                # If no customer, create a temporary attribute for display
+                order.customer_name = "Unknown Customer"
+                
+                # Calculate final price if not already done
+                if not hasattr(order, 'final_total'):
+                    # Add convenience fee to original price
+                    order.final_total = (order.price * order.quantity) + 99
+                
+                orders_with_names.append(order)
+                
+        context['orders'] = orders_with_names
         return context
 
 
@@ -421,6 +518,159 @@ class BrandDeleteView(StaffRequiredMixin, DeleteView):
     model = Brand
     template_name = 'adminoperations/admin_branddelete.html'
     success_url = reverse_lazy('brand_list')
+    
+# Product Offer Views
+class ProductOfferListView(StaffRequiredMixin, ListView):
+    model = ProductOffer
+    template_name = 'adminoperations/product_offer_list.html'
+    context_object_name = 'offers'
+    
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        now = timezone.now()
+        for offer in context['offers']:
+            if not offer.active:
+                offer.status = "Inactive"
+            elif now < offer.valid_from:
+                offer.status = "Scheduled"
+            elif now > offer.valid_to:
+                offer.status = "Expired"
+            else:
+                offer.status = "Active"
+        return context
+
+class ProductOfferCreateView(StaffRequiredMixin, CreateView):
+    model = ProductOffer
+    form_class = ProductOfferForm
+    template_name = 'adminoperations/product_offer_form.html'
+    success_url = reverse_lazy('product_offer_list')
+    
+    def form_valid(self, form):
+        messages.success(self.request, 'Product offer created successfully!')
+        return super().form_valid(form)
+
+class ProductOfferUpdateView(StaffRequiredMixin, UpdateView):
+    model = ProductOffer
+    form_class = ProductOfferForm
+    template_name = 'adminoperations/product_offer_form.html'
+    success_url = reverse_lazy('product_offer_list')
+    
+    def form_valid(self, form):
+        messages.success(self.request, 'Product offer updated successfully!')
+        return super().form_valid(form)
+
+class ProductOfferDeleteView(StaffRequiredMixin, DeleteView):
+    model = ProductOffer
+    template_name = 'adminoperations/product_offer_delete.html'
+    success_url = reverse_lazy('product_offer_list')
+    
+    def delete(self, request, *args, **kwargs):
+        messages.success(self.request, 'Product offer deleted successfully!')
+        return super().delete(request, *args, **kwargs)
+
+# Category Offer Views
+class CategoryOfferListView(StaffRequiredMixin, ListView):
+    model = CategoryOffer
+    template_name = 'adminoperations/category_offer_list.html'
+    context_object_name = 'offers'
+    
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        now = timezone.now()
+        for offer in context['offers']:
+            if not offer.active:
+                offer.status = "Inactive"
+            elif now < offer.valid_from:
+                offer.status = "Scheduled"
+            elif now > offer.valid_to:
+                offer.status = "Expired"
+            else:
+                offer.status = "Active"
+        return context
+
+class CategoryOfferCreateView(StaffRequiredMixin, CreateView):
+    model = CategoryOffer
+    form_class = CategoryOfferForm
+    template_name = 'adminoperations/category_offer_form.html'
+    success_url = reverse_lazy('category_offer_list')
+    
+    def form_valid(self, form):
+        messages.success(self.request, 'Category offer created successfully!')
+        return super().form_valid(form)
+
+class CategoryOfferUpdateView(StaffRequiredMixin, UpdateView):
+    model = CategoryOffer
+    form_class = CategoryOfferForm
+    template_name = 'adminoperations/category_offer_form.html'
+    success_url = reverse_lazy('category_offer_list')
+    
+    def form_valid(self, form):
+        messages.success(self.request, 'Category offer updated successfully!')
+        return super().form_valid(form)
+
+class CategoryOfferDeleteView(StaffRequiredMixin, DeleteView):
+    model = CategoryOffer
+    template_name = 'adminoperations/category_offer_delete.html'
+    success_url = reverse_lazy('category_offer_list')
+    
+    def delete(self, request, *args, **kwargs):
+        messages.success(self.request, 'Category offer deleted successfully!')
+        return super().delete(request, *args, **kwargs)
+
+# Referral Offer Views
+class ReferralOfferListView(StaffRequiredMixin, ListView):
+    model = ReferralOffer
+    template_name = 'adminoperations/referral_offer_list.html'
+    context_object_name = 'offers'
+    
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        now = timezone.now()
+        for offer in context['offers']:
+            if not offer.active:
+                offer.status = "Inactive"
+            elif now < offer.valid_from:
+                offer.status = "Scheduled"
+            elif now > offer.valid_to:
+                offer.status = "Expired"
+            else:
+                offer.status = "Active"
+            
+            # Add usage info
+            if offer.max_uses > 0:
+                offer.usage_status = f"{offer.times_used}/{offer.max_uses}"
+            else:
+                offer.usage_status = f"{offer.times_used}/∞"
+        return context
+
+class ReferralOfferCreateView(StaffRequiredMixin, CreateView):
+    model = ReferralOffer
+    form_class = ReferralOfferForm
+    template_name = 'adminoperations/referral_offer_form.html'
+    success_url = reverse_lazy('referral_offer_list')
+    
+    def form_valid(self, form):
+        messages.success(self.request, 'Referral offer created successfully!')
+        return super().form_valid(form)
+
+class ReferralOfferUpdateView(StaffRequiredMixin, UpdateView):
+    model = ReferralOffer
+    form_class = ReferralOfferForm
+    template_name = 'adminoperations/referral_offer_form.html'
+    success_url = reverse_lazy('referral_offer_list')
+    
+    def form_valid(self, form):
+        messages.success(self.request, 'Referral offer updated successfully!')
+        return super().form_valid(form)
+
+class ReferralOfferDeleteView(StaffRequiredMixin, DeleteView):
+    model = ReferralOffer
+    template_name = 'adminoperations/referral_offer_delete.html'
+    success_url = reverse_lazy('referral_offer_list')
+    
+    def delete(self, request, *args, **kwargs):
+        messages.success(self.request, 'Referral offer deleted successfully!')
+        return super().delete(request, *args, **kwargs)
 class UpdateOrderStatusView(StaffRequiredMixin, View):
     def post(self, request, order_id):
         order = get_object_or_404(Order, id=order_id)
@@ -442,3 +692,206 @@ class UpdateOrderStatusView(StaffRequiredMixin, View):
             messages.error(request, 'Invalid status')
             
         return redirect('admin_order_details', order_id=order_id)
+    
+class CouponForm(forms.ModelForm):
+    class Meta:
+        model = Coupon
+        fields = ['code', 'discount_type', 'discount_value', 'minimum_purchase', 
+                 'valid_from', 'valid_to', 'active', 'usage_limit']
+        widgets = {
+            'valid_from': forms.DateTimeInput(attrs={'type': 'datetime-local'}),
+            'valid_to': forms.DateTimeInput(attrs={'type': 'datetime-local'}),
+        }
+
+class StaffRequiredMixin(UserPassesTestMixin):
+    def test_func(self):
+        return self.request.user.is_staff
+
+class CouponListView(LoginRequiredMixin, StaffRequiredMixin, View):
+    def get(self, request):
+        coupons = Coupon.objects.all().order_by('-valid_to')
+        now = timezone.now()
+        
+        # Add status for each coupon
+        for coupon in coupons:
+            if not coupon.active:
+                coupon.status = "Inactive"
+            elif now < coupon.valid_from:
+                coupon.status = "Scheduled"
+            elif now > coupon.valid_to:
+                coupon.status = "Expired"
+            else:
+                coupon.status = "Active"
+                
+            # Check usage limit
+            if coupon.usage_limit > 0:
+                coupon.usage_status = f"{coupon.times_used}/{coupon.usage_limit}"
+            else:
+                coupon.usage_status = f"{coupon.times_used}/∞"
+        
+        return render(request, 'adminoperations/coupon_list.html', {'coupons': coupons})
+
+class CreateCouponView(LoginRequiredMixin, StaffRequiredMixin, View):
+    def get(self, request):
+        form = CouponForm()
+        return render(request, 'adminoperations/coupon_form.html', {'form': form, 'title': 'Create Coupon'})
+    
+    def post(self, request):
+        form = CouponForm(request.POST)
+        if form.is_valid():
+            form.save()
+            messages.success(request, "Coupon created successfully!")
+            return redirect('coupon_list')
+        return render(request, 'adminoperations/coupon_form.html', {'form': form, 'title': 'Create Coupon'})
+
+class EditCouponView(LoginRequiredMixin, StaffRequiredMixin, View):
+    def get(self, request, pk):
+        coupon = get_object_or_404(Coupon, pk=pk)
+        form = CouponForm(instance=coupon)
+        return render(request, 'adminoperations/coupon_form.html', {'form': form, 'title': 'Edit Coupon'})
+    
+    def post(self, request, pk):
+        coupon = get_object_or_404(Coupon, pk=pk)
+        form = CouponForm(request.POST, instance=coupon)
+        if form.is_valid():
+            form.save()
+            messages.success(request, "Coupon updated successfully!")
+            return redirect('coupon_list')
+        return render(request, 'adminoperations/coupon_form.html', {'form': form, 'title': 'Edit Coupon'})
+
+class DeleteCouponView(LoginRequiredMixin, StaffRequiredMixin, View):
+    def get(self, request, pk):
+        coupon = get_object_or_404(Coupon, pk=pk)
+        return render(request, 'adminoperations/coupon_confirm_delete.html', {'coupon': coupon})
+    
+    def post(self, request, pk):
+        coupon = get_object_or_404(Coupon, pk=pk)
+        coupon.delete()
+        messages.success(request, "Coupon deleted successfully!")
+        return redirect('coupon_list')
+    
+class SalesReportView(LoginRequiredMixin, StaffRequiredMixin, View):
+    def get(self, request):
+        # Get filter parameters
+        report_type = request.GET.get('report_type', 'daily')
+        start_date_str = request.GET.get('start_date')
+        end_date_str = request.GET.get('end_date')
+        
+        # Set default date range based on report type
+        end_date = timezone.now().date()
+        
+        if report_type == 'daily':
+            start_date = end_date
+        elif report_type == 'weekly':
+            start_date = end_date - timedelta(days=7)
+        elif report_type == 'monthly':
+            start_date = end_date - timedelta(days=30)
+        elif report_type == 'yearly':
+            start_date = end_date - timedelta(days=365)
+        else:  # custom
+            try:
+                start_date = datetime.strptime(start_date_str, '%Y-%m-%d').date()
+                end_date = datetime.strptime(end_date_str, '%Y-%m-%d').date()
+            except (ValueError, TypeError):
+                # Default to last 30 days if dates are invalid
+                start_date = end_date - timedelta(days=30)
+        
+        # Query orders within date range
+        orders = Order.objects.filter(
+            date__gte=start_date,
+            date__lte=end_date
+        )
+        
+        # Calculate sales metrics
+        total_orders = orders.count()
+        
+        # Calculate original order amount (before discounts)
+        original_amount = orders.aggregate(
+            total=Sum(F('price') * F('quantity'), output_field=DecimalField())
+        )['total'] or 0
+        
+        # Calculate actual order amount (after product offers)
+        # This assumes the price field already includes product offer discounts
+        actual_amount = original_amount
+        
+        # Calculate coupon discounts
+        # This is a placeholder - you'll need to adjust based on your actual data model
+        coupon_discount = 0
+        
+        # Group data by date for the chart - using a simpler approach
+        sales_by_date = []
+        chart_labels = []
+        chart_data = []
+        chart_counts = []
+        
+        # Get all orders and group them manually
+        if orders.exists():
+            # Create a dictionary to store data by date
+            date_data = {}
+            
+            for order in orders:
+                # Format the date based on report type
+                if report_type == 'daily':
+                    date_key = order.date.strftime('%Y-%m-%d')
+                    display_date = order.date.strftime('%Y-%m-%d')
+                elif report_type == 'weekly':
+                    # Get the week number
+                    week_num = order.date.isocalendar()[1]
+                    year = order.date.year
+                    date_key = f"{year}-W{week_num}"
+                    display_date = f"Week {week_num}, {year}"
+                elif report_type == 'monthly':
+                    date_key = order.date.strftime('%Y-%m')
+                    display_date = order.date.strftime('%b %Y')
+                else:  # yearly or custom
+                    date_key = order.date.strftime('%Y-%m')
+                    display_date = order.date.strftime('%b %Y')
+                
+                # Calculate order total
+                order_total = order.price * order.quantity
+                
+                # Add or update data for this date
+                if date_key in date_data:
+                    date_data[date_key]['total_sales'] += order_total
+                    date_data[date_key]['order_count'] += 1
+                else:
+                    date_data[date_key] = {
+                        'display_date': display_date,
+                        'total_sales': order_total,
+                        'order_count': 1
+                    }
+            
+            # Convert dictionary to sorted list
+            for date_key in sorted(date_data.keys()):
+                data = date_data[date_key]
+                sales_by_date.append({
+                    'date_group': date_key,
+                    'display_date': data['display_date'],
+                    'total_sales': data['total_sales'],
+                    'order_count': data['order_count']
+                })
+                
+                # Add data for charts
+                chart_labels.append(data['display_date'])
+                chart_data.append(float(data['total_sales']))
+                chart_counts.append(data['order_count'])
+        
+        # Chart data is now prepared in the previous step
+        
+        context = {
+            'report_type': report_type,
+            'start_date': start_date,
+            'end_date': end_date,
+            'total_orders': total_orders,
+            'original_amount': original_amount,
+            'actual_amount': actual_amount,
+            'coupon_discount': coupon_discount,
+            'product_discount': original_amount - actual_amount,
+            'total_discount': (original_amount - actual_amount) + coupon_discount,
+            'chart_labels': chart_labels,
+            'chart_data': chart_data,
+            'chart_counts': chart_counts,
+            'sales_by_date': sales_by_date,
+        }
+        
+        return render(request, 'adminoperations/sales_report.html', context)

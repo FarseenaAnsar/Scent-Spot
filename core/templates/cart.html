@@ -3,6 +3,17 @@
 
 {% block css%}
     <link href="static/css/cart.css" rel="stylesheet" type="text/css">
+    <style>
+        /* Remove increment/decrement arrows from number inputs */
+        input[type=number]::-webkit-inner-spin-button, 
+        input[type=number]::-webkit-outer-spin-button { 
+            -webkit-appearance: none; 
+            margin: 0; 
+        }
+        input[type=number] {
+            -moz-appearance: textfield;
+        }
+    </style>
 {% endblock %}
 
 {% block content %}
@@ -45,15 +56,29 @@
                             </div>
                         </div>
                     </td>
-                    <td>{{ item.product.price|currency }}</td>
                     <td>
-                        <form action="{% url 'update_cart' item.product.id %}" method="POST" class="d-flex align-items-center">
-                            {% csrf_token %}
-                            <input type="number" name="quantity" value="{{ item.quantity }}" min="1" max="3" class="form-control" style="width: 80px;">
-                            <button type="submit" class="btn btn-sm btn-outline-secondary ms-2">Update</button>
-                        </form>
+                        {% if item.product.has_offer %}
+                            <span class="text-danger">{{ item.product.get_discount_price|currency }}</span>
+                            <small class="text-muted"><del>{{ item.product.price|currency }}</del></small>
+                            <span class="badge bg-success">{{ item.product.offer_details.discount_percentage }}% OFF</span>
+                        {% else %}
+                            {{ item.product.price|currency }}
+                        {% endif %}
                     </td>
-                    <td>{{ item.product.price|mul:item.quantity|currency }}</td>
+                    <td>
+                        <div class="d-flex align-items-center">
+                            <input type="number" name="quantity" value="{{ item.quantity }}" min="1" max="3" class="form-control quantity-input" style="width: 80px;" 
+                                data-product-id="{{ item.product.id }}" 
+                                data-price="{% if item.product.has_offer %}{{ item.product.get_discount_price }}{% else %}{{ item.product.price }}{% endif %}">
+                        </div>
+                    </td>
+                    <td class="product-total" id="total-{{ item.product.id }}">
+                        {% if item.product.has_offer %}
+                            {{ item.product.get_discount_price|mul:item.quantity|currency }}
+                        {% else %}
+                            {{ item.product.price|mul:item.quantity|currency }}
+                        {% endif %}
+                    </td>
                     <td>
                         <form action="{% url 'remove_from_cart' item.product.id %}" method="POST" class="d-inline">
                             {% csrf_token %}
@@ -66,7 +91,7 @@
             <tfoot>
                 <tr>
                     <td colspan="3" class="text-end"><strong>Total:</strong></td>
-                    <td colspan="2"><strong>{{ cart_items|cart_total|currency }}</strong></td>
+                    <td colspan="2"><strong>{{ cart_total|currency }}</strong></td>
                 </tr>
             </tfoot>
         </table>
@@ -97,9 +122,10 @@
         <h4>Order Summary</h4>
         <p>Subtotal: ₹{{ cart_total|floatformat:2 }}</p>
         {% if request.session.discount %}
-            <p>Discount: -₹{{ request.session.discount|floatformat:2 }}</p>
+            <p>Coupon Discount: -₹{{ request.session.discount|floatformat:2 }}</p>
         {% endif %}
         <p>Total: ₹{{ final_total|floatformat:2 }}</p>
+        <small class="text-success">* Product offers have been applied to individual items</small>
     </div>
 
     <div class="d-flex justify-content-between mt-4">
@@ -117,6 +143,7 @@
 </div>
 {% endblock %}
 
+{% block js %}
 <script>
     document.addEventListener('DOMContentLoaded', function() {
         // Get all quantity input elements
@@ -124,70 +151,51 @@
         
         quantityInputs.forEach(input => {
             input.addEventListener('change', function() {
-                const productId = this.dataset.productId;
+                const productId = this.getAttribute('data-product-id');
+                const price = parseFloat(this.getAttribute('data-price'));
                 const quantity = parseInt(this.value);
-                const row = this.closest('tr');
-                const priceElement = row.querySelector('.product-price');
-                const totalElement = row.querySelector('.product-total');
                 
-                // Get the base price from the data attribute
-                const basePrice = parseFloat(priceElement.dataset.price);
+                // Validate quantity
+                if (quantity < 1) {
+                    this.value = 1;
+                } else if (quantity > 3) {
+                    this.value = 3;
+                }
                 
-                // Calculate new total
-                const newTotal = basePrice * quantity;
+                // Update price display immediately
+                const totalElement = document.getElementById(`total-${productId}`);
+                const newTotal = price * parseInt(this.value);
+                totalElement.textContent = '₹' + newTotal.toFixed(2);
                 
-                // Update the total display
-                totalElement.textContent = formatCurrency(newTotal);
+                // Get CSRF token
+                const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
                 
-                // Optional: Update server-side cart
-                updateCart(productId, quantity);
+                // Send AJAX request to update cart
+                fetch(`/cart/update/${productId}/`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded',
+                        'X-CSRFToken': csrfToken
+                    },
+                    body: `quantity=${this.value}`
+                })
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('Network response was not ok');
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    // Update cart total and final total
+                    const cartTotalElements = document.querySelectorAll('.cart-summary p');
+                    if (cartTotalElements.length > 0) {
+                        cartTotalElements[0].textContent = `Subtotal: ₹${data.cart_total.toFixed(2)}`;
+                        cartTotalElements[cartTotalElements.length - 1].textContent = `Total: ₹${data.final_total.toFixed(2)}`;
+                    }
+                })
+                .catch(error => console.error('Error:', error));
             });
         });
     });
-    
-    // Function to format currency (you can adjust this based on your needs)
-    function formatCurrency(amount) {
-        return '$' + amount.toFixed(2);
-    }
-    
-    // Function to update cart on server
-    function updateCart(productId, quantity) {
-        fetch('/update-cart/', {  // Replace with your actual update cart URL
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-CSRFToken': getCookie('csrftoken')  // Get CSRF token
-            },
-            body: JSON.stringify({
-                product_id: productId,
-                quantity: quantity
-            })
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                // Optional: Update cart total or show success message
-                console.log('Cart updated successfully');
-            }
-        })
-        .catch(error => console.error('Error:', error));
-    }
-    
-    // Function to get CSRF token from cookies
-    function getCookie(name) {
-        let cookieValue = null;
-        if (document.cookie && document.cookie !== '') {
-            const cookies = document.cookie.split(';');
-            for (let i = 0; i < cookies.length; i++) {
-                const cookie = cookies[i].trim();
-                if (cookie.substring(0, name.length + 1) === (name + '=')) {
-                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
-                    break;
-                }
-            }
-        }
-        return cookieValue;
-    }
 </script>
-    
-    
+{% endblock %}

@@ -1,7 +1,36 @@
 {% extends "base.html" %}
 {% load static %}
 {% block css%}
-    <link href="static/css/wishlist.css" rel="stylesheet" type="text/css">
+    <link href="{% static 'css/wishlist.css' %}" rel="stylesheet" type="text/css">
+    <style>
+        .remove-item {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+        }
+        .btn-remove {
+            background-color: white;
+            border: none;
+            border-radius: 50%;
+            width: 30px;
+            height: 30px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+            cursor: pointer;
+        }
+        .btn-remove:hover {
+            background-color: #f8f8f8;
+        }
+        .btn-remove i {
+            color: #ff4d4d;
+            font-size: 16px;
+        }
+        .wishlist-img-wrapper {
+            position: relative;
+        }
+    </style>
 {% endblock %}
 
 {% block content %}
@@ -29,25 +58,25 @@
                 <div class="wishlist-card">
                     <div class="wishlist-img-wrapper">
                         <img src="{{ item.product.image.url }}" alt="{{ item.product.name }}">
-                        <form action="{% url 'add_to_cart' item.product.id %}" method="POST">
-                            {% csrf_token %}
-                            <input type="number" name="quantity" value="1" min="1" max="3" class="form-control" style="width: 80px;">
-                            <button type="submit" class="btn btn-primary">Add to Cart</button>
-                        </form>
+                        <div class="remove-item">
+                            <form action="{% url 'remove_from_wishlist' item.product.id %}" method="POST" class="remove-form">
+                                {% csrf_token %}
+                                <button type="submit" class="btn-remove" title="Remove from wishlist">
+                                    <i class="fas fa-times"></i>
+                                </button>
+                            </form>
+                        </div>
                     </div>
                     <div class="wishlist-content">
                         <h3>{{ item.product.name }}</h3>
                         <p class="price">{{ item.product.price|floatformat:2 }}</p>
                         <p class="brand">{{ item.product.brand }}</p>
                         <div class="action-buttons">
-                            {% comment %} {% for wishlist_item in wishlist_items %} {% endcomment %}
-                                <form action="{% url 'add_to_cart' item.product.id %}" method="POST">
-                                    {% csrf_token %}
-                                    <input type="number" name="quantity" value="1" min="1" max="3" class="form-control" style="width: 80px;">
-                                    <button type="submit" class="btn btn-primary">Add to Cart</button>
-                                </form>
-                            {% comment %} {% endfor %} {% endcomment %}
-                            
+                            <form action="{% url 'add_to_cart' item.product.id %}" method="POST">
+                                {% csrf_token %}
+                                <input type="number" name="quantity" value="1" min="1" max="3" class="form-control" style="width: 80px;">
+                                <button type="submit" class="btn btn-primary">Add to Cart</button>
+                            </form>
                         </div>
                     </div>
                 </div>

@@ -1,0 +1,533 @@
+{% extends 'adminoperations/admin_base.html' %}
+{% load static %}
+
+{% block title %}Sales Report{% endblock %}
+
+{% block extra_css %}
+<style>
+    .report-card {
+        border-radius: 10px;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        transition: transform 0.3s;
+    }
+    .report-card:hover {
+        transform: translateY(-5px);
+    }
+    .report-value {
+        font-size: 24px;
+        font-weight: bold;
+    }
+    .report-label {
+        font-size: 14px;
+        color: #6c757d;
+    }
+    .date-filter {
+        background-color: #f8f9fa;
+        border-radius: 10px;
+        padding: 20px;
+        margin-bottom: 20px;
+    }
+    
+    /* Print styles */
+    @media print {
+        body * {
+            visibility: hidden;
+        }
+        .container, .container * {
+            visibility: visible;
+        }
+        .container {
+            position: absolute;
+            left: 0;
+            top: 0;
+            width: 100%;
+        }
+        .action-buttons, .date-filter, nav, footer {
+            display: none !important;
+        }
+        .print-only {
+            display: block !important;
+        }
+        
+        /* Ensure chart is visible */
+        canvas {
+            max-width: 100%;
+            height: auto !important;
+        }
+        
+        /* Improve table layout for printing */
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            page-break-inside: auto;
+        }
+        tr {
+            page-break-inside: avoid;
+            page-break-after: auto;
+        }
+        th, td {
+            padding: 8px;
+            border: 1px solid #ddd;
+        }
+    }
+    
+    .print-only {
+        display: none;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <h2 class="mb-4">Sales Report</h2>
+    
+    <!-- Date Filter Form -->
+    <div class="date-filter">
+        <form method="get" id="report-form">
+            <div class="row">
+                <div class="col-md-3 mb-3">
+                    <label for="report_type" class="form-label">Report Type</label>
+                    <select name="report_type" id="report_type" class="form-select">
+                        <option value="daily" {% if report_type == 'daily' %}selected{% endif %}>Daily</option>
+                        <option value="weekly" {% if report_type == 'weekly' %}selected{% endif %}>Weekly</option>
+                        <option value="monthly" {% if report_type == 'monthly' %}selected{% endif %}>Monthly</option>
+                        <option value="yearly" {% if report_type == 'yearly' %}selected{% endif %}>Yearly</option>
+                        <option value="custom" {% if report_type == 'custom' %}selected{% endif %}>Custom Range</option>
+                    </select>
+                </div>
+                
+                <div class="col-md-3 mb-3 custom-date-range" {% if report_type != 'custom' %}style="display: none;"{% endif %}>
+                    <label for="start_date" class="form-label">Start Date</label>
+                    <input type="date" name="start_date" id="start_date" class="form-control" value="{{ start_date|date:'Y-m-d' }}">
+                </div>
+                
+                <div class="col-md-3 mb-3 custom-date-range" {% if report_type != 'custom' %}style="display: none;"{% endif %}>
+                    <label for="end_date" class="form-label">End Date</label>
+                    <input type="date" name="end_date" id="end_date" class="form-control" value="{{ end_date|date:'Y-m-d' }}">
+                </div>
+                
+                <div class="col-md-3 mb-3 d-flex align-items-end">
+                    <button type="submit" class="btn btn-primary w-100">Generate Report</button>
+                </div>
+            </div>
+        </form>
+    </div>
+    
+    <!-- Report Summary Cards -->
+    <div class="row mb-4">
+        <div class="col-md-3 mb-3">
+            <div class="card report-card bg-light">
+                <div class="card-body text-center">
+                    <div class="report-value">{{ total_orders }}</div>
+                    <div class="report-label">Total Orders</div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-3 mb-3">
+            <div class="card report-card bg-light">
+                <div class="card-body text-center">
+                    <div class="report-value">₹{{ original_amount|floatformat:2 }}</div>
+                    <div class="report-label">Original Amount</div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-3 mb-3">
+            <div class="card report-card bg-light">
+                <div class="card-body text-center">
+                    <div class="report-value">₹{{ total_discount|floatformat:2 }}</div>
+                    <div class="report-label">Total Discount</div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-3 mb-3">
+            <div class="card report-card bg-light">
+                <div class="card-body text-center">
+                    <div class="report-value">₹{{ actual_amount|floatformat:2 }}</div>
+                    <div class="report-label">Net Sales</div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Discount Breakdown -->
+    <div class="row mb-4">
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0">Discount Breakdown</h5>
+                </div>
+                <div class="card-body">
+                    <table class="table">
+                        <tbody>
+                            <tr>
+                                <td>Product Offers Discount</td>
+                                <td class="text-end">₹{{ product_discount|floatformat:2 }}</td>
+                            </tr>
+                            <tr>
+                                <td>Coupon Discount</td>
+                                <td class="text-end">₹{{ coupon_discount|floatformat:2 }}</td>
+                            </tr>
+                            <tr class="table-active">
+                                <th>Total Discount</th>
+                                <th class="text-end">₹{{ total_discount|floatformat:2 }}</th>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0">Sales Summary</h5>
+                </div>
+                <div class="card-body">
+                    <table class="table">
+                        <tbody>
+                            <tr>
+                                <td>Original Amount</td>
+                                <td class="text-end">₹{{ original_amount|floatformat:2 }}</td>
+                            </tr>
+                            <tr>
+                                <td>Total Discount</td>
+                                <td class="text-end">₹{{ total_discount|floatformat:2 }}</td>
+                            </tr>
+                            <tr class="table-active">
+                                <th>Net Sales</th>
+                                <th class="text-end">₹{{ actual_amount|floatformat:2 }}</th>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Sales Chart -->
+    <div class="card mb-4">
+        <div class="card-header bg-primary text-white">
+            <h5 class="mb-0">Sales Trend</h5>
+        </div>
+        <div class="card-body">
+            <canvas id="salesChart" height="300"></canvas>
+        </div>
+    </div>
+    
+    <!-- Detailed Sales Table -->
+    <div class="card">
+        <div class="card-header bg-primary text-white">
+            <h5 class="mb-0">Detailed Sales Data</h5>
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-striped">
+                    <thead>
+                        <tr>
+                            <th>Date</th>
+                            <th>Orders</th>
+                            <th>Sales Amount</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for item in sales_by_date %}
+                        <tr>
+                            <td>{{ item.display_date }}</td>
+                            <td>{{ item.order_count }}</td>
+                            <td>₹{{ item.total_sales|floatformat:2 }}</td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="3" class="text-center">No sales data available for the selected period</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Export Buttons -->
+    <div class="mt-4 text-end">
+        <button id="exportPDF" class="btn btn-danger">
+            <i class="bi bi-file-pdf"></i> Export as PDF
+        </button>
+        <button id="exportCSV" class="btn btn-success">
+            <i class="bi bi-file-excel"></i> Export as CSV
+        </button>
+        <button id="printReport" class="btn btn-secondary">
+            <i class="bi bi-printer"></i> Print Report
+        </button>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Initialize sales chart
+        const ctx = document.getElementById('salesChart').getContext('2d');
+        const salesChart = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: {{ chart_labels|safe }},
+                datasets: [
+                    {
+                        label: 'Sales Amount',
+                        data: {{ chart_data|safe }},
+                        borderColor: 'rgba(75, 192, 192, 1)',
+                        backgroundColor: 'rgba(75, 192, 192, 0.2)',
+                        borderWidth: 2,
+                        fill: true,
+                        tension: 0.1,
+                        pointRadius: 4,
+                        pointHoverRadius: 6,
+                        showLine: true,
+                        spanGaps: true
+                    },
+                    {
+                        label: 'Order Count',
+                        data: {{ chart_counts|safe }},
+                        borderColor: 'rgba(153, 102, 255, 1)',
+                        backgroundColor: 'rgba(153, 102, 255, 0.2)',
+                        borderWidth: 2,
+                        fill: true,
+                        tension: 0.1,
+                        pointRadius: 4,
+                        pointHoverRadius: 6,
+                        showLine: true,
+                        spanGaps: true,
+                        yAxisID: 'y1'
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                elements: {
+                    line: {
+                        tension: 0.3,
+                        borderWidth: 2,
+                        fill: true
+                    },
+                    point: {
+                        radius: 4,
+                        hitRadius: 10,
+                        hoverRadius: 6
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        title: {
+                            display: true,
+                            text: 'Sales Amount (₹)'
+                        }
+                    },
+                    y1: {
+                        beginAtZero: true,
+                        position: 'right',
+                        title: {
+                            display: true,
+                            text: 'Order Count'
+                        },
+                        grid: {
+                            drawOnChartArea: false
+                        }
+                    }
+                },
+                plugins: {
+                    legend: {
+                        display: true,
+                        position: 'top'
+                    },
+                    tooltip: {
+                        mode: 'index',
+                        intersect: false
+                    }
+                }
+            }
+        });
+        
+        // Show/hide custom date range based on report type
+        document.getElementById('report_type').addEventListener('change', function() {
+            const customDateFields = document.querySelectorAll('.custom-date-range');
+            if (this.value === 'custom') {
+                customDateFields.forEach(field => field.style.display = 'block');
+            } else {
+                customDateFields.forEach(field => field.style.display = 'none');
+            }
+        });
+        
+        // Print report
+        document.getElementById('printReport').addEventListener('click', function() {
+            // Add report metadata to the print view
+            const reportType = document.getElementById('report_type').value;
+            let dateRangeText = '';
+            
+            if (reportType === 'custom') {
+                const startDate = document.getElementById('start_date').value;
+                const endDate = document.getElementById('end_date').value;
+                dateRangeText = `Custom Range: ${startDate} to ${endDate}`;
+            } else {
+                dateRangeText = `Period: ${reportType.charAt(0).toUpperCase() + reportType.slice(1)}`;
+            }
+            
+            // Create a hidden div to store the report metadata
+            const metadataDiv = document.createElement('div');
+            metadataDiv.id = 'print-metadata';
+            metadataDiv.className = 'print-only';
+            metadataDiv.innerHTML = `
+                <div style="text-align: center; margin-bottom: 20px;">
+                    <h3>Sales Report</h3>
+                    <p>${dateRangeText}</p>
+                    <p>Generated on: ${new Date().toLocaleString()}</p>
+                </div>
+            `;
+            
+            // Insert the metadata at the top of the container
+            const container = document.querySelector('.container');
+            container.insertBefore(metadataDiv, container.firstChild);
+            
+            // Print the page
+            window.print();
+            
+            // Remove the metadata div after printing
+            container.removeChild(metadataDiv);
+        });
+        
+        // Export as PDF
+        document.getElementById('exportPDF').addEventListener('click', function() {
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF('p', 'mm', 'a4');
+            
+            // Get report type and date range for the title
+            const reportType = document.getElementById('report_type').value;
+            let dateRangeText = '';
+            
+            if (reportType === 'custom') {
+                const startDate = document.getElementById('start_date').value;
+                const endDate = document.getElementById('end_date').value;
+                dateRangeText = `Custom Range: ${startDate} to ${endDate}`;
+            } else {
+                dateRangeText = `Period: ${reportType.charAt(0).toUpperCase() + reportType.slice(1)}`;
+            }
+            
+            // Add title and date range
+            doc.text('Sales Report', 105, 10, { align: 'center' });
+            doc.text(dateRangeText, 105, 20, { align: 'center' });
+            
+            // Add summary data
+            doc.text(`Total Orders: {{ total_orders }}`, 20, 40);
+            doc.text(`Original Amount: ₹{{ original_amount|floatformat:2 }}`, 20, 50);
+            doc.text(`Total Discount: ₹{{ total_discount|floatformat:2 }}`, 20, 60);
+            doc.text(`Net Sales: ₹{{ actual_amount|floatformat:2 }}`, 20, 70);
+            
+            // Add chart
+            html2canvas(document.getElementById('salesChart')).then(canvas => {
+                const imgData = canvas.toDataURL('image/png');
+                doc.addImage(imgData, 'PNG', 10, 80, 190, 100);
+                
+                // Add detailed data table
+                let yPosition = 190;
+                doc.text('Detailed Sales Data', 105, yPosition, { align: 'center' });
+                yPosition += 10;
+                
+                // Table headers
+                doc.setFontSize(10);
+                doc.text('Date', 20, yPosition);
+                doc.text('Orders', 80, yPosition);
+                doc.text('Sales Amount', 120, yPosition);
+                yPosition += 5;
+                
+                // Draw header line
+                doc.setLineWidth(0.1);
+                doc.line(20, yPosition, 180, yPosition);
+                yPosition += 5;
+                
+                // Table data
+                {% for item in sales_by_date %}
+                    // Check if we need a new page
+                    if (yPosition > 270) {
+                        doc.addPage();
+                        yPosition = 20;
+                    }
+                    
+                    doc.text('{{ item.display_date }}', 20, yPosition);
+                    doc.text('{{ item.order_count }}', 80, yPosition);
+                    doc.text('₹{{ item.total_sales|floatformat:2 }}', 120, yPosition);
+                    yPosition += 7;
+                {% endfor %}
+                
+                // Save the PDF with a descriptive filename
+                const filename = `SalesReport_${reportType}_{{ start_date|date:"Y-m-d" }}_to_{{ end_date|date:"Y-m-d" }}.pdf`;
+                doc.save(filename);
+            });
+        });
+        
+        // Export as CSV/Excel
+        document.getElementById('exportCSV').addEventListener('click', function() {
+            // Get report type and date range for the header and filename
+            const reportType = document.getElementById('report_type').value;
+            let dateRangeText = '';
+            
+            if (reportType === 'custom') {
+                const startDate = document.getElementById('start_date').value;
+                const endDate = document.getElementById('end_date').value;
+                dateRangeText = `Custom Range: ${startDate} to ${endDate}`;
+            } else {
+                dateRangeText = `Period: ${reportType.charAt(0).toUpperCase() + reportType.slice(1)}`;
+            }
+            
+            // Create header rows with report metadata
+            const rows = [
+                ['Sales Report'],
+                [dateRangeText],
+                ['Generated on:', new Date().toLocaleString()],
+                [''],
+                ['Summary'],
+                ['Total Orders:', '{{ total_orders }}'],
+                ['Original Amount:', '₹{{ original_amount|floatformat:2 }}'],
+                ['Total Discount:', '₹{{ total_discount|floatformat:2 }}'],
+                ['Net Sales:', '₹{{ actual_amount|floatformat:2 }}'],
+                [''],
+                ['Detailed Sales Data'],
+                ['Date', 'Orders', 'Sales Amount (₹)'],
+                {% for item in sales_by_date %}
+                ['{{ item.display_date }}', '{{ item.order_count }}', '{{ item.total_sales|floatformat:2 }}'],
+                {% endfor %}
+            ];
+            
+            let csvContent = "data:text/csv;charset=utf-8,";
+            rows.forEach(row => {
+                // Properly escape CSV values
+                const escapedRow = row.map(field => {
+                    // If field contains commas, quotes, or newlines, wrap in quotes
+                    if (typeof field === 'string' && (field.includes(',') || field.includes('"') || field.includes('\n'))) {
+                        return `"${field.replace(/"/g, '""')}"`;
+                    }
+                    return field;
+                });
+                csvContent += escapedRow.join(',') + '\r\n';
+            });
+            
+            const encodedUri = encodeURI(csvContent);
+            const link = document.createElement('a');
+            link.setAttribute('href', encodedUri);
+            
+            // Create a descriptive filename with the report type and date range
+            const filename = `SalesReport_${reportType}_{{ start_date|date:"Y-m-d" }}_to_{{ end_date|date:"Y-m-d" }}.csv`;
+            link.setAttribute('download', filename);
+            
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        });
+    });
+</script>
+{% endblock %}

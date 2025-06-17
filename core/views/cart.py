@@ -8,6 +8,7 @@ from django.contrib.auth.mixins import LoginRequiredMixin
 from django.contrib import messages
 from django.views.generic import View, ListView
 from django.db import transaction
+from django.http import JsonResponse
 
 
 class Cart(LoginRequiredMixin, View):
@@ -23,15 +24,40 @@ class Cart(LoginRequiredMixin, View):
         # Get cart items from database
         cart_items = CartItem.objects.filter(user=request.user).select_related('product')
         
-        # Calculate totals
-        cart_total = sum(item.product.price * item.quantity for item in cart_items)
-        final_total = cart_total
+        # Calculate subtotal (original price before any discounts)
+        subtotal = 0
+        for item in cart_items:
+            subtotal += item.product.price * item.quantity
+        
+        # Calculate cart total with product/category offer discounts
+        cart_total = 0
+        for item in cart_items:
+            if hasattr(item.product, 'has_offer') and item.product.has_offer:
+                cart_total += item.product.get_discount_price * item.quantity
+            else:
+                cart_total += item.product.price * item.quantity
+        
+        # Calculate offer discount amount
+        offer_discount = subtotal - cart_total
+        
+        # Apply coupon discount if available
+        coupon_discount = 0
         if 'discount' in request.session:
-            final_total = cart_total - request.session['discount']
-            
+            coupon_discount = request.session['discount']
+        
+        # Add convenience fee
+        convenience_fee = 99  # ₹99
+        
+        # Calculate final total
+        final_total = cart_total - coupon_discount + convenience_fee
+        
         context = {
             'cart_items': cart_items,
+            'subtotal': subtotal,
+            'offer_discount': offer_discount,
             'cart_total': cart_total,
+            'coupon_discount': coupon_discount,
+            'convenience_fee': convenience_fee,
             'final_total': final_total
         }
         return render(request, self.template_name, context)
@@ -47,10 +73,33 @@ class Cart(LoginRequiredMixin, View):
                 pass
             
         cart_items = CartItem.objects.filter(user=request.user).select_related('product')
-        cart_total = sum(item.product.price * item.quantity for item in cart_items)
-        final_total = cart_total
+        
+        # Calculate subtotal (original price before any discounts)
+        subtotal = 0
+        for item in cart_items:
+            subtotal += item.product.price * item.quantity
+        
+        # Calculate cart total with product/category offer discounts
+        cart_total = 0
+        for item in cart_items:
+            if hasattr(item.product, 'has_offer') and item.product.has_offer:
+                cart_total += item.product.get_discount_price * item.quantity
+            else:
+                cart_total += item.product.price * item.quantity
+        
+        # Calculate offer discount amount
+        offer_discount = subtotal - cart_total
+        
+        # Apply coupon discount if available
+        coupon_discount = 0
         if 'discount' in request.session:
-            final_total = cart_total - request.session['discount']
+            coupon_discount = request.session['discount']
+        
+        # Add convenience fee
+        convenience_fee = 99  # ₹99
+        
+        # Calculate final total
+        final_total = cart_total - coupon_discount + convenience_fee
             
         if not cart_items:
             messages.info(request, "There are no products in the cart. Let's add some products!")
@@ -60,7 +109,11 @@ class Cart(LoginRequiredMixin, View):
             
         return render(request, self.template_name, {
             "cart_items": cart_items,
+            "subtotal": subtotal,
+            "offer_discount": offer_discount,
             "cart_total": cart_total,
+            "coupon_discount": coupon_discount,
+            "convenience_fee": convenience_fee,
             "final_total": final_total
         })
 
@@ -141,10 +194,62 @@ class UpdateCartView(LoginRequiredMixin, View):
             cart_item.quantity = new_quantity
             cart_item.save()
             
+            # For AJAX requests, return JSON response
+            if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                # Calculate subtotal and totals with offer prices
+                cart_items = CartItem.objects.filter(user=request.user).select_related('product')
+                
+                # Calculate subtotal (original price before any discounts)
+                subtotal = 0
+                for item in cart_items:
+                    subtotal += item.product.price * item.quantity
+                
+                # Calculate cart total with product/category offer discounts
+                cart_total = 0
+                for item in cart_items:
+                    if hasattr(item.product, 'has_offer') and item.product.has_offer:
+                        cart_total += item.product.get_discount_price * item.quantity
+                    else:
+                        cart_total += item.product.price * item.quantity
+                
+                # Calculate offer discount amount
+                offer_discount = subtotal - cart_total
+                
+                # Apply coupon discount if available
+                coupon_discount = 0
+                if 'discount' in request.session:
+                    coupon_discount = request.session['discount']
+                
+                # Add convenience fee
+                convenience_fee = 99  # ₹99
+                
+                # Calculate final total
+                final_total = cart_total - coupon_discount + convenience_fee
+                
+                # Calculate item total with offer price if applicable
+                item_total = 0
+                if hasattr(cart_item.product, 'has_offer') and cart_item.product.has_offer:
+                    item_total = cart_item.product.get_discount_price * cart_item.quantity
+                else:
+                    item_total = cart_item.product.price * cart_item.quantity
+                
+                return JsonResponse({
+                    'success': True,
+                    'subtotal': subtotal,
+                    'offer_discount': offer_discount,
+                    'cart_total': cart_total,
+                    'coupon_discount': coupon_discount,
+                    'convenience_fee': convenience_fee,
+                    'final_total': final_total,
+                    'item_total': item_total
+                })
+            
             messages.success(request, 'Cart updated successfully!')
+            return redirect('cart')
+            
         except (ValueError, TypeError):
             messages.error(request, 'Invalid quantity specified')
+            return redirect('cart')
         except Exception as e:
             messages.error(request, f'Error updating cart: {str(e)}')
-            
-        return redirect('cart')
+            return redirect('cart')
