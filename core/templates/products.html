@@ -21,18 +21,16 @@
                 <!-- Additional images thumbnails -->
                 <div class="additional-images mt-3">
                     <!-- Main image thumbnail -->
-                    <div class="thumb-container">
+                    <div class="thumb-container active" onclick="setActiveThumb(this, '{{product.image.url}}')">
                         <img src="{{product.image.url}}" 
                             alt="Main image" 
-                            onclick="changeMainImage(this.src)"
                             class="thumb-img">
                     </div>
                     <!-- Additional images -->
                     {% for img in additional_images %}
-                    <div class="thumb-container">
+                    <div class="thumb-container" onclick="setActiveThumb(this, '{{img.image.url}}')">
                         <img src="{{img.image.url}}" 
                             alt="Additional image" 
-                            onclick="changeMainImage(this.src)"
                             class="thumb-img">
                     </div>
                     {% endfor %}
@@ -184,43 +182,42 @@
             const mainImage = document.getElementById('mainImage');
             
             if (imageZoom && mainImage) {
-                // Set the image URL as a CSS variable
-                imageZoom.style.setProperty('--bg-image', `url(${mainImage.src})`);
-                
                 imageZoom.addEventListener('mousemove', (e) => {
-                    // Show the zoom effect
-                    imageZoom.style.setProperty('--display', 'block');
-                    
-                    // Calculate cursor position as percentage
                     const rect = imageZoom.getBoundingClientRect();
-                    const x = (e.clientX - rect.left) / rect.width * 100;
-                    const y = (e.clientY - rect.top) / rect.height * 100;
+                    const x = ((e.clientX - rect.left) / rect.width) * 100;
+                    const y = ((e.clientY - rect.top) / rect.height) * 100;
                     
-                    // Set position for zoom effect
-                    imageZoom.style.setProperty('--zoom-x', x + '%');
-                    imageZoom.style.setProperty('--zoom-y', y + '%');
-                });
-                
-                imageZoom.addEventListener('mouseleave', () => {
-                    imageZoom.style.setProperty('--display', 'none');
+                    mainImage.style.transformOrigin = `${x}% ${y}%`;
                 });
             }
         });
         
         function changeMainImage(src) {
             const mainImage = document.getElementById('mainImage');
-            mainImage.style.opacity = '0.5';
-            mainImage.src = src;
-            
-            // Update zoom image if it exists
-            const imageZoom = document.getElementById('imageZoom');
-            if (imageZoom) {
-                imageZoom.style.setProperty('--bg-image', `url(${src})`);
+            if (mainImage) {
+                mainImage.src = src;
             }
+        }
+        
+        function setActiveThumb(clickedThumb, src) {
+            console.log('Clicked thumbnail with src:', src);
             
-            mainImage.onload = function() {
-                mainImage.style.opacity = '1';
-            };
+            // Remove active class from all thumbnails
+            document.querySelectorAll('.thumb-container').forEach(thumb => {
+                thumb.classList.remove('active');
+            });
+            
+            // Add active class to clicked thumbnail
+            clickedThumb.classList.add('active');
+            
+            // Change main image
+            const mainImage = document.getElementById('mainImage');
+            if (mainImage) {
+                console.log('Changing main image to:', src);
+                mainImage.src = src;
+            } else {
+                console.log('Main image element not found');
+            }
         }
         
         function updateActiveThumbnail(clickedThumb) {

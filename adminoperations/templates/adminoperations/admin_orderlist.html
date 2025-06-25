@@ -34,13 +34,13 @@
                             <td>{{ order.date|date:"M d, Y" }}</td>
                             <td>
                                 {% if order.final_total %}
-                                    ₹{{ order.final_total }}
+                                    ₹{{ order.final_total|floatformat:0 }}
                                 {% else %}
-                                    ₹{{ order.price }}
+                                    ₹{{ order.price|add:99 }}
                                 {% endif %}
                             </td>
                             <td>
-                                <span class="badge {% if order.status == 'received' %}bg-info{% elif order.status == 'processing' %}bg-warning{% elif order.status == 'delivered' %}bg-success{% elif order.status == 'cancelled' %}bg-danger{% elif order.status == 'returned' %}bg-secondary{% endif %}">
+                                <span class="badge {% if order.status == 'received' %}bg-info{% elif order.status == 'processing' %}bg-warning{% elif order.status == 'delivered' %}bg-success{% elif order.status == 'cancelled' %}bg-danger{% elif order.status == 'returned' %}bg-dark{% elif order.status == 'return_approved' %}bg-warning{% elif order.status == 'return_rejected' %}bg-danger{% else %}bg-secondary{% endif %}">
                                     {{ order.status|title }}
                                 </span>
                             </td>

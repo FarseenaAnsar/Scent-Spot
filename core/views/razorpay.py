@@ -98,6 +98,9 @@ class VerifyPaymentView(View):
                     phone=""
                 )
             
+            # Get coupon discount from session
+            coupon_discount = request.session.get('discount', 0)
+            
             # Create orders for each cart item
             for item in cart_items:
                 # Check if product has enough stock
@@ -126,6 +129,7 @@ class VerifyPaymentView(View):
                     phone=request.POST.get('phone', ''),
                     order_id=order_id,
                     payment_id=payment_id,
+                    coupon_discount=coupon_discount,
                     status="processing"
                 )
                 order.save()

@@ -151,6 +151,26 @@ class PlaceCODOrderView(LoginRequiredMixin, View):
             request.session['customer_id'] = customer.id
             print(f"Stored customer ID {customer.id} in session")
             
+            # Get coupon discount from session
+            coupon_discount = request.session.get('discount', 0)
+            
+            # Calculate total amount to check COD eligibility
+            cart_total = 0
+            for item in cart_items:
+                if hasattr(item.product, 'has_offer') and item.product.has_offer:
+                    cart_total += item.product.get_discount_price * item.quantity
+                else:
+                    cart_total += item.product.price * item.quantity
+            
+            final_total = cart_total - coupon_discount + 99  # Add convenience fee
+            
+            # Check if COD is allowed (orders above ₹1000 not allowed for COD)
+            if final_total > 1000:
+                return JsonResponse({
+                    'status': 'error',
+                    'message': 'Cash on Delivery is not available for orders above ₹1000. Please choose online payment.'
+                })
+            
             # Create orders for each cart item
             for item in cart_items:
                 # Debug the customer object
@@ -179,6 +199,7 @@ class PlaceCODOrderView(LoginRequiredMixin, View):
                     phone=phone,
                     order_id=order_id,
                     payment_id=payment_id,
+                    coupon_discount=coupon_discount,
                     status="processing"
                 )
                 order.save()

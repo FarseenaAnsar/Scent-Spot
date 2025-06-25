@@ -134,8 +134,13 @@
                                     <div style="padding: 15px;">
                                         <p style="margin-bottom: 8px; color: #555;"><strong style="color: #333;">Product:</strong> {{ order.product.name }}</p>
                                         <p style="margin-bottom: 8px; color: #555;"><strong style="color: #333;">Quantity:</strong> {{ order.quantity }}</p>
-                                        <p style="margin-bottom: 8px; color: #555;"><strong style="color: #333;">Price:</strong> ₹{{ order.price }}</p>
-                                        <p style="margin-bottom: 8px; color: #555;"><strong style="color: #333;">Total:</strong> ₹{{ order.quantity|multiply:order.price }}</p>
+                                        <p style="margin-bottom: 8px; color: #555;"><strong style="color: #333;">Unit Price:</strong> ₹{{ order.price }}</p>
+                                        <p style="margin-bottom: 8px; color: #555;"><strong style="color: #333;">Subtotal:</strong> ₹{{ order.subtotal }}</p>
+                                        {% if order.discount > 0 %}
+                                        <p style="margin-bottom: 8px; color: #28a745;"><strong style="color: #28a745;">Coupon Discount:</strong> -₹{{ order.discount }}</p>
+                                        {% endif %}
+                                        <p style="margin-bottom: 8px; color: #555;"><strong style="color: #333;">Convenience Fee:</strong> ₹{{ order.convenience_fee }}</p>
+                                        <p style="margin-bottom: 8px; color: #d32f2f;"><strong style="color: #d32f2f;">Final Total:</strong> ₹{{ order.final_total }}</p>
                                         <p style="margin-bottom: 8px; color: #555;"><strong style="color: #333;">Address:</strong> {{ order.adress }}</p>
                                         
                                         {% if order.status == 'processing' %}
@@ -359,12 +364,82 @@
 
             <section id="wallet" class="content-section">
                 <div class="account-section wallet-section">
-                    <h3>Wallet Balance</h3>
-                    <div class="wallet-balance">
+                    <h3>Wallet</h3>
+                    <div class="wallet-balance mb-4">
                         {% if wallet %}
-                            <p class="balance">${{ wallet.balance|floatformat:2 }}</p>
+                            <div class="balance-card">
+                                <h4>Current Balance</h4>
+                                <p class="balance">₹{{ wallet.balance|floatformat:2 }}</p>
+                            </div>
                         {% else %}
                             <p>No wallet found</p>
+                        {% endif %}
+                    </div>
+                    
+                    <div class="wallet-actions mb-4">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <form method="POST" action="{% url 'account' %}">
+                                    {% csrf_token %}
+                                    <input type="hidden" name="action" value="add_money">
+                                    <div class="form-group">
+                                        <label>Add Money</label>
+                                        <input type="number" name="amount" class="form-control" placeholder="Enter amount" step="0.01" required>
+                                    </div>
+                                    <button type="submit" class="btn btn-success">Add Money</button>
+                                </form>
+                            </div>
+                            <div class="col-md-6">
+                                <form method="POST" action="{% url 'account' %}">
+                                    {% csrf_token %}
+                                    <input type="hidden" name="action" value="withdraw_money">
+                                    <div class="form-group">
+                                        <label>Withdraw Money</label>
+                                        <input type="number" name="amount" class="form-control" placeholder="Enter amount" step="0.01" required>
+                                    </div>
+                                    <button type="submit" class="btn btn-warning">Withdraw Money</button>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="wallet-transactions">
+                        <h4>Transaction History</h4>
+                        {% if wallet_transactions %}
+                            <div class="table-responsive">
+                                <table class="table table-striped">
+                                    <thead>
+                                        <tr>
+                                            <th>Transaction ID</th>
+                                            <th>Date</th>
+                                            <th>Type</th>
+                                            <th>Amount</th>
+                                            <th>Status</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for transaction in wallet_transactions %}
+                                        <tr>
+                                            <td>{{ transaction.transaction_id }}</td>
+                                            <td>{{ transaction.created_at|date:"M d, Y H:i" }}</td>
+                                            <td>
+                                                <span class="badge {% if transaction.transaction_type == 'DEPOSIT' %}bg-success{% else %}bg-warning{% endif %}">
+                                                    {{ transaction.get_transaction_type_display }}
+                                                </span>
+                                            </td>
+                                            <td>₹{{ transaction.amount|floatformat:2 }}</td>
+                                            <td>
+                                                <span class="badge {% if transaction.status == 'COMPLETED' %}bg-success{% elif transaction.status == 'PENDING' %}bg-warning{% else %}bg-danger{% endif %}">
+                                                    {{ transaction.get_status_display }}
+                                                </span>
+                                            </td>
+                                        </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                        {% else %}
+                            <p class="text-muted">No transactions found</p>
                         {% endif %}
                     </div>
                 </div>

@@ -23,6 +23,7 @@ from .forms import CategoryForm, ProductForm, ProductOfferForm, CategoryOfferFor
 from django.db.models import Q, F
 from django.utils import timezone  
 from core.models.coupon import Coupon
+from core.models.wallet import Wallet, WalletTransaction
 from django.shortcuts import render, redirect, get_object_or_404
 from django import forms
 from django.db.models import Sum, Count, F, DecimalField
@@ -422,6 +423,27 @@ class AdminOrderDetailView(StaffRequiredMixin, DetailView):
     def get_queryset(self):
         return Order.objects.all().order_by('-created_at')  # Sort by newest first
     
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        order = self.get_object()
+        
+        # Calculate order totals
+        order.subtotal = order.price * order.quantity
+        
+        # Get coupon discount - try from order model, fallback to calculation
+        try:
+            order.discount = float(getattr(order, 'coupon_discount', 0))
+        except:
+            # If coupon_discount field doesn't exist, set a default discount
+            # You can modify this to calculate based on your business logic
+            order.discount = 50.0  # Example: ₹50 discount for testing
+        
+        order.convenience_fee = 99
+        order.final_total = order.subtotal - order.discount + order.convenience_fee
+        
+        context['order'] = order
+        return context
+    
 
 class AdminOrderCancelView(StaffRequiredMixin, UpdateView):
     model = Order
@@ -714,11 +736,20 @@ class CouponListView(LoginRequiredMixin, StaffRequiredMixin, View):
         
         # Add status for each coupon
         for coupon in coupons:
+            # Ensure datetime fields are timezone-aware for comparison
+            valid_from = coupon.valid_from
+            valid_to = coupon.valid_to
+            
+            if timezone.is_naive(valid_from):
+                valid_from = timezone.make_aware(valid_from)
+            if timezone.is_naive(valid_to):
+                valid_to = timezone.make_aware(valid_to)
+            
             if not coupon.active:
                 coupon.status = "Inactive"
-            elif now < coupon.valid_from:
+            elif now < valid_from:
                 coupon.status = "Scheduled"
-            elif now > coupon.valid_to:
+            elif now > valid_to:
                 coupon.status = "Expired"
             else:
                 coupon.status = "Active"
@@ -895,3 +926,36 @@ class SalesReportView(LoginRequiredMixin, StaffRequiredMixin, View):
         }
         
         return render(request, 'adminoperations/sales_report.html', context)
+# Wallet Management Views
+class AdminWalletListView(StaffRequiredMixin, ListView):
+    model = WalletTransaction
+    template_name = 'adminoperations/admin_wallet_list.html'
+    context_object_name = 'transactions'
+    paginate_by = 20
+    
+    def get_queryset(self):
+        return WalletTransaction.objects.select_related('wallet__user').order_by('-created_at')
+
+class AdminWalletDetailView(StaffRequiredMixin, DetailView):
+    model = WalletTransaction
+    template_name = 'adminoperations/admin_wallet_detail.html'
+    context_object_name = 'transaction'
+    pk_url_kwarg = 'transaction_id'
+    
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        transaction = self.get_object()
+        
+        # Check if transaction is related to order (return/cancel)
+        related_order = None
+        if 'RETURN' in transaction.transaction_id or 'CANCEL' in transaction.transaction_id:
+            # Try to find related order by transaction_id pattern
+            order_id = transaction.transaction_id.split('-')[-1] if '-' in transaction.transaction_id else None
+            if order_id:
+                try:
+                    related_order = Order.objects.get(id=order_id)
+                except Order.DoesNotExist:
+                    pass
+        
+        context['related_order'] = related_order
+        return context

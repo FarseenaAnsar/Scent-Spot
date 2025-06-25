@@ -66,10 +66,13 @@
                         {% endif %}
                     </td>
                     <td>
-                        <div class="d-flex align-items-center">
-                            <input type="number" name="quantity" value="{{ item.quantity }}" min="1" max="3" class="form-control quantity-input" style="width: 80px;" 
+                        <div class="quantity-wrapper">
+                            <button type="button" class="quantity-btn" onclick="changeQuantity({{ item.product.id }}, -1)">-</button>
+                            <input type="number" name="quantity" value="{{ item.quantity }}" min="1" max="3" class="quantity-input" id="qty-{{ item.product.id }}"
                                 data-product-id="{{ item.product.id }}" 
-                                data-price="{% if item.product.has_offer %}{{ item.product.get_discount_price }}{% else %}{{ item.product.price }}{% endif %}">
+                                data-price="{% if item.product.has_offer %}{{ item.product.get_discount_price }}{% else %}{{ item.product.price }}{% endif %}"
+                                onchange="updateCart(this)">
+                            <button type="button" class="quantity-btn" onclick="changeQuantity({{ item.product.id }}, 1)">+</button>
                         </div>
                     </td>
                     <td class="product-total" id="total-{{ item.product.id }}">
@@ -141,61 +144,55 @@
     </div>
     {% endif %}
 </div>
+
+<script>
+    function changeQuantity(productId, change) {
+        const input = document.getElementById('qty-' + productId);
+        let newValue = parseInt(input.value) + change;
+        if (newValue < 1) newValue = 1;
+        if (newValue > 3) newValue = 3;
+        input.value = newValue;
+        
+        const price = parseFloat(input.getAttribute('data-price'));
+        document.getElementById('total-' + productId).textContent = '₹' + (price * newValue).toFixed(2);
+        
+        const form = new FormData();
+        form.append('quantity', newValue);
+        const token = document.querySelector('[name=csrfmiddlewaretoken]').value;
+        
+        fetch('/cart/update/' + productId + '/', {
+            method: 'POST',
+            headers: { 'X-CSRFToken': token, 'X-Requested-With': 'XMLHttpRequest' },
+            body: form
+        }).then(() => location.reload());
+    }
+</script>
 {% endblock %}
 
 {% block js %}
 <script>
-    document.addEventListener('DOMContentLoaded', function() {
-        // Get all quantity input elements
-        const quantityInputs = document.querySelectorAll('.quantity-input');
+    function changeQuantity(productId, change) {
+        alert('Button clicked: ' + productId);
+        const input = document.getElementById('qty-' + productId);
+        let newValue = parseInt(input.value) + change;
+        if (newValue < 1) newValue = 1;
+        if (newValue > 3) newValue = 3;
+        input.value = newValue;
         
-        quantityInputs.forEach(input => {
-            input.addEventListener('change', function() {
-                const productId = this.getAttribute('data-product-id');
-                const price = parseFloat(this.getAttribute('data-price'));
-                const quantity = parseInt(this.value);
-                
-                // Validate quantity
-                if (quantity < 1) {
-                    this.value = 1;
-                } else if (quantity > 3) {
-                    this.value = 3;
-                }
-                
-                // Update price display immediately
-                const totalElement = document.getElementById(`total-${productId}`);
-                const newTotal = price * parseInt(this.value);
-                totalElement.textContent = '₹' + newTotal.toFixed(2);
-                
-                // Get CSRF token
-                const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
-                
-                // Send AJAX request to update cart
-                fetch(`/cart/update/${productId}/`, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/x-www-form-urlencoded',
-                        'X-CSRFToken': csrfToken
-                    },
-                    body: `quantity=${this.value}`
-                })
-                .then(response => {
-                    if (!response.ok) {
-                        throw new Error('Network response was not ok');
-                    }
-                    return response.json();
-                })
-                .then(data => {
-                    // Update cart total and final total
-                    const cartTotalElements = document.querySelectorAll('.cart-summary p');
-                    if (cartTotalElements.length > 0) {
-                        cartTotalElements[0].textContent = `Subtotal: ₹${data.cart_total.toFixed(2)}`;
-                        cartTotalElements[cartTotalElements.length - 1].textContent = `Total: ₹${data.final_total.toFixed(2)}`;
-                    }
-                })
-                .catch(error => console.error('Error:', error));
-            });
-        });
-    });
+        // Update display
+        const price = parseFloat(input.getAttribute('data-price'));
+        document.getElementById('total-' + productId).textContent = '₹' + (price * newValue).toFixed(2);
+        
+        // Send to server
+        const form = new FormData();
+        form.append('quantity', newValue);
+        const token = document.querySelector('[name=csrfmiddlewaretoken]').value;
+        
+        fetch('/cart/update/' + productId + '/', {
+            method: 'POST',
+            headers: { 'X-CSRFToken': token, 'X-Requested-With': 'XMLHttpRequest' },
+            body: form
+        }).then(() => location.reload());
+    }
 </script>
 {% endblock %}

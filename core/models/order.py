@@ -23,6 +23,7 @@ class Order(models.Model):
     rating = models.IntegerField(default=0, validators=[MinValueValidator(0),MaxValueValidator(5)])
     payment_id = models.CharField(max_length=100,null=True,blank=True)
     order_id = models.CharField(max_length=100,null=True,blank=True)
+    coupon_discount = models.DecimalField(max_digits=10, decimal_places=2, default=0)
     created_at = models.DateTimeField(default=timezone.now)
     delivered_at = models.DateTimeField(null=True, blank=True)
     cancelled_at = models.DateTimeField(null=True, blank=True)

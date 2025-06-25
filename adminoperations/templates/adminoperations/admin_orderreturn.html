@@ -29,7 +29,8 @@
                             <span class="text-muted">No product information</span>
                         {% endif %}
                     </p>
-                    <p><strong>Price:</strong> ${{ return_request.order.price }}</p>
+                    <p><strong>Unit Price:</strong> ₹{{ return_request.order.price }}</p>
+                    <p><strong>Final Total:</strong> ₹{{ return_request.order.price|add:99 }}</p>
                 </div>
             </div>
         </div>

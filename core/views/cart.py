@@ -135,7 +135,10 @@ class AddToCartView(LoginRequiredMixin, View):
             )
             
             if not created:
-                cart_item.quantity += quantity
+                new_quantity = cart_item.quantity + quantity
+                if new_quantity > 3:
+                    new_quantity = 3
+                cart_item.quantity = new_quantity
                 cart_item.save()
                 messages.success(request, 'Cart updated successfully!')
             else:

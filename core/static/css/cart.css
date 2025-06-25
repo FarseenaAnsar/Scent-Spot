@@ -1,4 +1,4 @@
-/* static/css/coupon.css */
+/* static/css/cart.css */
 
 .coupon-section {
     margin: 20px 0;
@@ -25,4 +25,53 @@
 .applied-coupon p {
     color: #28a745;
     margin-bottom: 10px;
+}
+
+/* Quantity Controls Styling */
+.quantity-wrapper {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 5px;
+}
+
+.quantity-btn {
+    background-color: mediumpurple;
+    color: white;
+    border: none;
+    width: 30px;
+    height: 30px;
+    border-radius: 4px;
+    font-size: 16px;
+    font-weight: 600;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s ease;
+}
+
+.quantity-btn:hover {
+    background-color: #8a2be2;
+    transform: scale(1.05);
+}
+
+.quantity-btn:active {
+    transform: scale(0.95);
+}
+
+.quantity-input {
+    width: 50px;
+    height: 30px;
+    text-align: center;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    font-size: 14px;
+    font-weight: 600;
+}
+
+.quantity-input:focus {
+    outline: none;
+    border-color: mediumpurple;
+    box-shadow: 0 0 0 2px rgba(147, 112, 219, 0.2);
 }

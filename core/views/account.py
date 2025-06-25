@@ -9,7 +9,7 @@ from core.views.orders import Order
 from core.models.order import Order
 from core.models.return_request import ReturnRequest
 from core.models.wishlist import Wishlist
-from core.models.wallet import Wallet
+from core.models.wallet import Wallet, WalletTransaction
 from core.models.customer import Customer
 from core.models.address import Address
 from core.models.offer import ReferralOffer
@@ -68,6 +68,10 @@ class Account(LoginRequiredMixin, View):
             return self.set_default_address(request)
         elif action == 'verify_email':
             return self.verify_email(request)
+        elif action == 'add_money':
+            return self.add_money(request)
+        elif action == 'withdraw_money':
+            return self.withdraw_money(request)
         
         # Handle form submission for profile update
         try:
@@ -168,18 +172,20 @@ class Account(LoginRequiredMixin, View):
             
             # Add discount and convenience fee to each order
             for order in orders:
+                order.subtotal = order.price * order.quantity
                 order.discount = discount
                 order.convenience_fee = 99
-                order.final_total = (order.price * order.quantity) - discount + 99
+                order.final_total = order.subtotal - discount + 99
             
             # Get cancelled orders
             cancelled_orders = Order.objects.filter(customer=customer, status='cancelled')
             
             # Add discount and convenience fee to cancelled orders too
             for order in cancelled_orders:
+                order.subtotal = order.price * order.quantity
                 order.discount = discount
                 order.convenience_fee = 99
-                order.final_total = (order.price * order.quantity) - discount + 99
+                order.final_total = order.subtotal - discount + 99
             
             # Get referral offers for this customer
             referral_offers = ReferralOffer.objects.filter(
@@ -191,6 +197,9 @@ class Account(LoginRequiredMixin, View):
             referrals = Customer.objects.filter(referred_by=customer)
             
             wallet = Wallet.objects.filter(user=self.request.user).first()
+            wallet_transactions = []
+            if wallet:
+                wallet_transactions = WalletTransaction.objects.filter(wallet=wallet).order_by('-created_at')
             return_requests = ReturnRequest.objects.filter(order__customer=customer)
             addresses = Address.objects.filter(customer=customer)
 
@@ -201,6 +210,7 @@ class Account(LoginRequiredMixin, View):
                 'referral_offers': referral_offers,
                 'referrals': referrals,
                 'wallet': wallet,
+                'wallet_transactions': wallet_transactions,
                 'return_requests': return_requests,
                 'addresses': addresses,
                 'user': self.request.user
@@ -223,6 +233,7 @@ class Account(LoginRequiredMixin, View):
                 'referral_offers': [],
                 'referrals': [],
                 'wallet': Wallet.objects.filter(user=self.request.user).first(),
+                'wallet_transactions': [],
                 'return_requests': [],
                 'addresses': [],
                 'user': self.request.user
@@ -292,22 +303,38 @@ class Account(LoginRequiredMixin, View):
         return redirect('account')
 
     def cancel_order(self, request, order_id):
+        import uuid
+        from decimal import Decimal
+        
         try:
-            order = Order.objects.get(id=order_id, user=self.request.user)
+            order = Order.objects.get(id=order_id)
             
             # Check if order is eligible for cancellation
-            if order.status in ['PENDING', 'PROCESSING']:
+            if order.status in ['processing']:
+                # Calculate refund amount
+                refund_amount = Decimal(str(order.price * order.quantity + 99))  # Include convenience fee
+                
                 # Refund amount to wallet
                 wallet, created = Wallet.objects.get_or_create(user=request.user)
-                wallet.balance += order.total_amount
+                
+                # Create wallet transaction for cancellation refund
+                WalletTransaction.objects.create(
+                    wallet=wallet,
+                    transaction_id=f"CANCEL-{order.id}-{uuid.uuid4().hex[:6].upper()}",
+                    transaction_type='DEPOSIT',
+                    amount=refund_amount,
+                    status='COMPLETED'
+                )
+                
+                wallet.balance += refund_amount
                 wallet.save()
 
                 # Update order status
-                order.status = 'CANCELLED'
+                order.status = 'cancelled'
                 order.cancelled_at = timezone.now()
                 order.save()
 
-                messages.success(request, 'Order cancelled successfully. Amount refunded to wallet.')
+                messages.success(request, f'Order cancelled successfully. ₹{refund_amount} refunded to wallet.')
             else:
                 messages.error(request, 'This order cannot be cancelled.')
 
@@ -339,4 +366,71 @@ class Account(LoginRequiredMixin, View):
         except Order.DoesNotExist:
             messages.error(request, 'Order not found.')
 
+        return redirect('account')
+    def add_money(self, request):
+        import uuid
+        from decimal import Decimal
+        
+        try:
+            amount = Decimal(request.POST.get('amount', '0'))
+            if amount <= 0:
+                messages.error(request, 'Please enter a valid amount')
+                return redirect('account')
+            
+            wallet, created = Wallet.objects.get_or_create(user=request.user)
+            
+            WalletTransaction.objects.create(
+                wallet=wallet,
+                transaction_id=f"TXN-{uuid.uuid4().hex[:8].upper()}",
+                transaction_type='DEPOSIT',
+                amount=amount,
+                status='COMPLETED'
+            )
+            
+            wallet.balance += amount
+            wallet.save()
+            
+            messages.success(request, f'₹{amount} added to your wallet successfully!')
+            
+        except Exception as e:
+            messages.error(request, f'Error adding money: {str(e)}')
+        
+        return redirect('account')
+    
+    def withdraw_money(self, request):
+        import uuid
+        from decimal import Decimal
+        
+        try:
+            amount = Decimal(request.POST.get('amount', '0'))
+            if amount <= 0:
+                messages.error(request, 'Please enter a valid amount')
+                return redirect('account')
+            
+            try:
+                wallet = Wallet.objects.get(user=request.user)
+            except Wallet.DoesNotExist:
+                messages.error(request, 'Wallet not found')
+                return redirect('account')
+            
+            if wallet.balance < amount:
+                messages.error(request, 'Insufficient balance')
+                return redirect('account')
+            
+            WalletTransaction.objects.create(
+                wallet=wallet,
+                transaction_id=f"TXN-{uuid.uuid4().hex[:8].upper()}",
+                transaction_type='WITHDRAWAL',
+                amount=amount,
+                status='COMPLETED'
+            )
+            
+            wallet.balance -= amount
+            wallet.save()
+            
+            messages.success(request, f'₹{amount} withdrawn from your wallet successfully!')
+            
+        except Exception as e:
+            messages.error(request, f'Error withdrawing money: {str(e)}')
+        
         return redirect('account')

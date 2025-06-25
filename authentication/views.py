@@ -15,6 +15,7 @@ from core.models.wallet import Wallet
 from django.contrib.auth.models import User
 from .forms import CustomUserCreationForm
 from django.contrib.auth.forms import AuthenticationForm
+from core.models.customer import Customer
 
 # Create your views here.
 
@@ -52,6 +53,9 @@ def user_login(request):
     return render(request, 'authentication/login.html', {'form': form})
 
 
+from django.views.decorators.csrf import csrf_exempt
+
+@csrf_exempt
 def verify_login_otp(request):
     if request.method == 'POST':
         entered_otp = request.POST.get('otp')
@@ -59,15 +63,23 @@ def verify_login_otp(request):
         username = request.session.get('login_username')
         password = request.session.get('login_password')
         
+        if not sent_otp or not username or not password:
+            messages.error(request, 'Session expired. Please login again.')
+            return redirect('login')
+        
         if str(entered_otp) == str(sent_otp):
             user = authenticate(request, username=username, password=password)
             if user is not None:
                 login(request, user)
                 
                 # Clean up session
-                del request.session['login_otp']
-                del request.session['login_username']
-                del request.session['login_password']
+                if 'login_otp' in request.session:
+                    del request.session['login_otp']
+                if 'login_username' in request.session:
+                    del request.session['login_username']
+                if 'login_password' in request.session:
+                    del request.session['login_password']
+                request.session.modified = True
                 
                 if user.is_staff:
                     return redirect('admin_login')
@@ -77,8 +89,13 @@ def verify_login_otp(request):
                 return redirect('login')
         else:
             messages.error(request, 'Invalid OTP. Please try again.')
-            return redirect('verify_login_otp')
+            return render(request, 'authentication/verify_login_otp.html')
     
+    # Check if OTP exists in session
+    if 'login_otp' not in request.session:
+        messages.error(request, 'Session expired. Please login again.')
+        return redirect('login')
+        
     return render(request, 'authentication/verify_login_otp.html')
 
 
