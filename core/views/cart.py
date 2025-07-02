@@ -128,6 +128,15 @@ class AddToCartView(LoginRequiredMixin, View):
                 messages.error(request, f"{product.name} is out of stock!")
                 return redirect(request.META.get('HTTP_REFERER', 'cart'))
             
+            # Check quantity limits
+            max_allowed = min(3, product.stock)
+            if quantity > max_allowed:
+                if product.stock < 3:
+                    messages.error(request, f"Only {product.stock} items available in stock!")
+                else:
+                    messages.error(request, "Maximum 3 items allowed per order!")
+                return redirect(request.META.get('HTTP_REFERER', 'cart'))
+            
             cart_item, created = CartItem.objects.get_or_create(
                 user=request.user,
                 product=product,
@@ -136,8 +145,15 @@ class AddToCartView(LoginRequiredMixin, View):
             
             if not created:
                 new_quantity = cart_item.quantity + quantity
-                if new_quantity > 3:
-                    new_quantity = 3
+                max_allowed = min(3, product.stock)
+                
+                if new_quantity > max_allowed:
+                    if product.stock < 3:
+                        messages.error(request, f"Only {product.stock} items available in stock!")
+                    else:
+                        messages.error(request, "Maximum 3 items allowed per order!")
+                    return redirect('cart')
+                    
                 cart_item.quantity = new_quantity
                 cart_item.save()
                 messages.success(request, 'Cart updated successfully!')
@@ -187,11 +203,16 @@ class UpdateCartView(LoginRequiredMixin, View):
             # Get the new quantity from the form
             new_quantity = int(request.POST.get('quantity', 1))
             
-            # Validate quantity
+            # Validate quantity with stock limits
+            max_allowed = min(3, cart_item.product.stock)
             if new_quantity < 1:
                 new_quantity = 1
-            elif new_quantity > 3:
-                new_quantity = 3
+            elif new_quantity > max_allowed:
+                new_quantity = max_allowed
+                if cart_item.product.stock < 3:
+                    messages.warning(request, f"Only {cart_item.product.stock} items available in stock!")
+                else:
+                    messages.warning(request, "Maximum 3 items allowed per order!")
                 
             # Update the quantity
             cart_item.quantity = new_quantity

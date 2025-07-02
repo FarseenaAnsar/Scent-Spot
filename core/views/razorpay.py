@@ -85,6 +85,37 @@ class VerifyPaymentView(View):
                 'razorpay_signature': signature
             })
             
+            # Fetch payment details from Razorpay to validate amount
+            payment_details = client.payment.fetch(payment_id)
+            paid_amount = payment_details['amount'] / 100  # Convert from paise to rupees
+            
+            # Calculate expected amount from cart
+            cart_items = CartItem.objects.filter(user=request.user).select_related('product')
+            expected_total = 0
+            for item in cart_items:
+                if hasattr(item.product, 'has_offer') and item.product.has_offer:
+                    expected_total += item.product.get_discount_price * item.quantity
+                else:
+                    expected_total += item.product.price * item.quantity
+            
+            # Add discount and convenience fee
+            coupon_discount = request.session.get('discount', 0)
+            expected_total = expected_total - coupon_discount + 99
+            
+            # Validate payment amount
+            if abs(paid_amount - expected_total) > 0.01:  # Allow small floating point differences
+                return JsonResponse({
+                    'status': 'error',
+                    'message': f'Payment amount mismatch. Expected: ₹{expected_total}, Paid: ₹{paid_amount}'
+                })
+            
+            # Verify payment status
+            if payment_details['status'] != 'captured':
+                return JsonResponse({
+                    'status': 'error',
+                    'message': 'Payment not completed successfully'
+                })
+            
             # Get cart items
             cart_items = CartItem.objects.filter(user=request.user).select_related('product')
             

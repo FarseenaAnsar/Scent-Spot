@@ -283,12 +283,29 @@ class ProductUpdateView(StaffRequiredMixin, UpdateView):
         context = super().get_context_data(**kwargs)
         context['title'] = 'Edit Product'
         context['button_text'] = 'Update Product'
+        context['current_image'] = self.object.image.url if self.object.image else None
         return context
 
     def form_valid(self, form):
-        response = super().form_valid(form)
-        messages.success(self.request, 'Product updated successfully!')
-        return response
+        try:
+            # Store the original image before saving
+            original_image = self.object.image
+            
+            # Check if a new image was uploaded
+            if 'image' not in self.request.FILES or not self.request.FILES['image']:
+                # No new image uploaded, keep the existing one
+                form.instance.image = original_image
+            
+            response = super().form_valid(form)
+            messages.success(self.request, 'Product updated successfully!')
+            return response
+        except FileNotFoundError as e:
+            # Handle missing image file error
+            messages.error(self.request, 'Image file not found. Please upload a new image.')
+            return self.form_invalid(form)
+        except Exception as e:
+            messages.error(self.request, f'Error updating product: {str(e)}')
+            return self.form_invalid(form)
 
 class ProductDeleteView(StaffRequiredMixin, DeleteView):
     model = Product

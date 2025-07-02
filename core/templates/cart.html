@@ -68,8 +68,9 @@
                     <td>
                         <div class="quantity-wrapper">
                             <button type="button" class="quantity-btn" onclick="changeQuantity({{ item.product.id }}, -1)">-</button>
-                            <input type="number" name="quantity" value="{{ item.quantity }}" min="1" max="3" class="quantity-input" id="qty-{{ item.product.id }}"
+                            <input type="number" name="quantity" value="{{ item.quantity }}" min="1" max="{% if item.product.stock < 3 %}{{ item.product.stock }}{% else %}3{% endif %}" class="quantity-input" id="qty-{{ item.product.id }}"
                                 data-product-id="{{ item.product.id }}" 
+                                data-stock="{{ item.product.stock }}"
                                 data-price="{% if item.product.has_offer %}{{ item.product.get_discount_price }}{% else %}{{ item.product.price }}{% endif %}"
                                 onchange="updateCart(this)">
                             <button type="button" class="quantity-btn" onclick="changeQuantity({{ item.product.id }}, 1)">+</button>
@@ -127,7 +128,9 @@
         {% if request.session.discount %}
             <p>Coupon Discount: -₹{{ request.session.discount|floatformat:2 }}</p>
         {% endif %}
-        <p>Total: ₹{{ final_total|floatformat:2 }}</p>
+        <p>Convenience Fee: ₹{{ convenience_fee }}</p>
+        <hr>
+        <p><strong>Total: ₹{{ final_total|floatformat:2 }}</strong></p>
         <small class="text-success">* Product offers have been applied to individual items</small>
     </div>
 
@@ -145,54 +148,63 @@
     {% endif %}
 </div>
 
-<script>
-    function changeQuantity(productId, change) {
-        const input = document.getElementById('qty-' + productId);
-        let newValue = parseInt(input.value) + change;
-        if (newValue < 1) newValue = 1;
-        if (newValue > 3) newValue = 3;
-        input.value = newValue;
-        
-        const price = parseFloat(input.getAttribute('data-price'));
-        document.getElementById('total-' + productId).textContent = '₹' + (price * newValue).toFixed(2);
-        
-        const form = new FormData();
-        form.append('quantity', newValue);
-        const token = document.querySelector('[name=csrfmiddlewaretoken]').value;
-        
-        fetch('/cart/update/' + productId + '/', {
-            method: 'POST',
-            headers: { 'X-CSRFToken': token, 'X-Requested-With': 'XMLHttpRequest' },
-            body: form
-        }).then(() => location.reload());
-    }
-</script>
+
 {% endblock %}
 
 {% block js %}
 <script>
     function changeQuantity(productId, change) {
-        alert('Button clicked: ' + productId);
         const input = document.getElementById('qty-' + productId);
-        let newValue = parseInt(input.value) + change;
-        if (newValue < 1) newValue = 1;
-        if (newValue > 3) newValue = 3;
-        input.value = newValue;
+        let quantity = parseInt(input.value) + change;
+        const maxAllowed = parseInt(input.getAttribute('max'));
         
-        // Update display
+        if (quantity < 1) quantity = 1;
+        if (quantity > maxAllowed) quantity = maxAllowed;
+        
+        input.value = quantity;
+        
+        // Update display immediately
         const price = parseFloat(input.getAttribute('data-price'));
-        document.getElementById('total-' + productId).textContent = '₹' + (price * newValue).toFixed(2);
+        document.getElementById('total-' + productId).textContent = '₹' + (price * quantity).toFixed(2);
         
-        // Send to server
+        // Send update to server
         const form = new FormData();
-        form.append('quantity', newValue);
+        form.append('quantity', quantity);
         const token = document.querySelector('[name=csrfmiddlewaretoken]').value;
         
         fetch('/cart/update/' + productId + '/', {
             method: 'POST',
-            headers: { 'X-CSRFToken': token, 'X-Requested-With': 'XMLHttpRequest' },
+            headers: { 'X-CSRFToken': token },
             body: form
-        }).then(() => location.reload());
+        });
+    }
+    
+    function updateCart(input) {
+        const productId = input.getAttribute('data-product-id');
+        let quantity = parseInt(input.value);
+        const maxAllowed = parseInt(input.getAttribute('max'));
+        
+        if (quantity < 1) {
+            quantity = 1;
+            input.value = quantity;
+        }
+        if (quantity > maxAllowed) {
+            quantity = maxAllowed;
+            input.value = quantity;
+        }
+        
+        const price = parseFloat(input.getAttribute('data-price'));
+        document.getElementById('total-' + productId).textContent = '₹' + (price * quantity).toFixed(2);
+        
+        const form = new FormData();
+        form.append('quantity', quantity);
+        const token = document.querySelector('[name=csrfmiddlewaretoken]').value;
+        
+        fetch('/cart/update/' + productId + '/', {
+            method: 'POST',
+            headers: { 'X-CSRFToken': token },
+            body: form
+        });
     }
 </script>
 {% endblock %}

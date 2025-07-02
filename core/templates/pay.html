@@ -75,7 +75,21 @@
             </div>
             <div class="form-group">
                 <label for="address">Shipping Address*</label>
-                <textarea name="address" id="address" class="form-control" required></textarea>
+                {% if addresses %}
+                    <div class="mb-2">
+                        <label>Choose from saved addresses:</label>
+                        <select id="saved-addresses" class="form-control mb-2" onchange="fillAddress()">
+                            <option value="">Select a saved address</option>
+                            {% for addr in addresses %}
+                                <option value="{{ addr.address_line1 }}{% if addr.address_line2 %}, {{ addr.address_line2 }}{% endif %}, {{ addr.city }}, {{ addr.state }} {{ addr.postal_code }}" {% if addr.is_default %}selected{% endif %}>
+                                    {{ addr.address_line1 }}{% if addr.address_line2 %}, {{ addr.address_line2 }}{% endif %}, {{ addr.city }}, {{ addr.state }} {{ addr.postal_code }}
+                                    {% if addr.is_default %} (Default){% endif %}
+                                </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                {% endif %}
+                <textarea name="address" id="address" class="form-control" required placeholder="Or enter a new address"></textarea>
                 <div class="invalid-feedback" id="address-error">
                   Please enter a valid shipping address
                 </div>
@@ -115,6 +129,35 @@
                     {% endif %}
                   {% endif %}
               </div>
+              <div class="form-check">
+                  {% if wallet_balance %}
+                    {% if discount %}
+                      {% if wallet_balance >= total|subtract:discount|sum:99 %}
+                        <input class="form-check-input" type="radio" name="payment_method" id="wallet" value="wallet">
+                        <label class="form-check-label" for="wallet">
+                            Pay from Wallet (Balance: ₹{{ wallet_balance|floatformat:2 }})
+                        </label>
+                      {% else %}
+                        <input class="form-check-input" type="radio" name="payment_method" id="wallet" value="wallet" disabled>
+                        <label class="form-check-label text-muted" for="wallet">
+                            Pay from Wallet (Insufficient balance: ₹{{ wallet_balance|floatformat:2 }})
+                        </label>
+                      {% endif %}
+                    {% else %}
+                      {% if wallet_balance >= total|sum:99 %}
+                        <input class="form-check-input" type="radio" name="payment_method" id="wallet" value="wallet">
+                        <label class="form-check-label" for="wallet">
+                            Pay from Wallet (Balance: ₹{{ wallet_balance|floatformat:2 }})
+                        </label>
+                      {% else %}
+                        <input class="form-check-input" type="radio" name="payment_method" id="wallet" value="wallet" disabled>
+                        <label class="form-check-label text-muted" for="wallet">
+                            Pay from Wallet (Insufficient balance: ₹{{ wallet_balance|floatformat:2 }})
+                        </label>
+                      {% endif %}
+                    {% endif %}
+                  {% endif %}
+              </div>
             </div>
             {% if discount %}
               <input type="hidden" name="total" value="{{ total|subtract:discount|sum:99 }}">
@@ -128,7 +171,18 @@
       </div>
 
   <script>
+    function fillAddress() {
+        const select = document.getElementById('saved-addresses');
+        const textarea = document.getElementById('address');
+        textarea.value = select.value;
+    }
+    
     $(document).ready(function() {
+        // Auto-fill default address on page load
+        const defaultOption = $('#saved-addresses option[selected]');
+        if (defaultOption.length > 0) {
+            $('#address').val(defaultOption.val());
+        }
       $("#place-order-btn").click(function(e) {
         e.preventDefault(); // Prevent default form submission
         const paymentMethod = $('input[name="payment_method"]:checked').val();
@@ -145,6 +199,29 @@
           $.ajax({
             type: "POST",
             url: "{% url 'place_cod_order' %}",
+            data: form.serialize(),
+            success: function(response) {
+              if (response.status === 'success') {
+                window.location.href = response.redirect_url;
+              } else {
+                alert(response.message || "Error processing your order");
+              }
+            },
+            error: function() {
+              alert("Error processing your order. Please try again.");
+            }
+          });
+        } else if (paymentMethod === 'wallet') {
+          // Check if wallet payment is disabled
+          if ($('#wallet').is(':disabled')) {
+            alert('Insufficient wallet balance. Please choose another payment method.');
+            return;
+          }
+          
+          // Submit to wallet endpoint
+          $.ajax({
+            type: "POST",
+            url: "{% url 'place_wallet_order' %}",
             data: form.serialize(),
             success: function(response) {
               if (response.status === 'success') {

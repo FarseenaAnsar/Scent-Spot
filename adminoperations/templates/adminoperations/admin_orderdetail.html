@@ -63,30 +63,52 @@
                                 </div>
                             </div>
                             <div class="card-body">
-                                <form method="POST" action="{% url 'update_order_status' order.id %}" id="statusForm">
-                                    {% csrf_token %}
-                                    <div class="form-group row">
-                                        <label class="col-sm-3 col-form-label"><strong>Change Status To:</strong></label>
-                                        <div class="col-sm-6">
-                                            <select name="status" class="form-control" id="orderStatus" onchange="document.getElementById('statusForm').submit();">
-                                                <option value="received" {% if order.status == 'received' %}selected{% endif %}>Received</option>
-                                                <option value="processing" {% if order.status == 'processing' %}selected{% endif %}>Processing</option>
-                                                <option value="delivered" {% if order.status == 'delivered' %}selected{% endif %}>Delivered</option>
-                                                <option value="cancelled" {% if order.status == 'cancelled' %}selected{% endif %}>Cancelled</option>
-                                                <option value="returned" {% if order.status == 'returned' %}selected{% endif %}>Returned</option>
-                                            </select>
-                                        </div>
-                                        <div class="col-sm-3">
-                                            <button type="submit" class="btn btn-primary">Update Status</button>
-                                        </div>
+                                {% if order.status == 'cancelled' or order.status == 'returned' %}
+                                    <div class="alert alert-warning">
+                                        <strong>Status cannot be changed:</strong> This order has been {{ order.status }} and cannot be modified.
                                     </div>
-                                </form>
+                                {% else %}
+                                    <form method="POST" action="{% url 'update_order_status' order.id %}" id="statusForm">
+                                        {% csrf_token %}
+                                        <div class="form-group row">
+                                            <label class="col-sm-3 col-form-label"><strong>Change Status To:</strong></label>
+                                            <div class="col-sm-6">
+                                                <select name="status" class="form-control" id="orderStatus" onchange="document.getElementById('statusForm').submit();">
+                                                    <option value="received" {% if order.status == 'received' %}selected{% endif %}>Received</option>
+                                                    <option value="processing" {% if order.status == 'processing' %}selected{% endif %}>Processing</option>
+                                                    <option value="delivered" {% if order.status == 'delivered' %}selected{% endif %}>Delivered</option>
+                                                    <option value="cancelled" {% if order.status == 'cancelled' %}selected{% endif %}>Cancelled</option>
+                                                </select>
+                                            </div>
+                                            <div class="col-sm-3">
+                                                <button type="submit" class="btn btn-primary">Update Status</button>
+                                            </div>
+                                        </div>
+                                    </form>
+                                {% endif %}
                             </div>
                         </div>
                     </div>
                 </div>
                 
-                <h6>Order Items:</h6>
+                <!-- Shipping Address Section -->
+                <div class="card mt-3">
+                    <div class="card-header">
+                        <h6 class="mb-0">Shipping Address</h6>
+                    </div>
+                    <div class="card-body">
+                        {% if order.adress %}
+                            <p class="mb-0">{{ order.adress }}</p>
+                        {% else %}
+                            <p class="text-muted mb-0">No address provided</p>
+                        {% endif %}
+                        {% if order.phone %}
+                            <p class="mb-0 mt-2"><strong>Phone:</strong> {{ order.phone }}</p>
+                        {% endif %}
+                    </div>
+                </div>
+                
+                <h6 class="mt-3">Order Items:</h6>
                 <div class="table-responsive">
                     <table class="table table-bordered">
                         <thead class="thead-light">

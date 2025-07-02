@@ -15,7 +15,7 @@
                         {% if out_of_stock or product.stock < 1 %}
                             <div class="out-of-stock-overlay">Out of Stock</div>
                         {% endif %}
-                        <!-- Zoom overlay will be added by JavaScript -->
+                        
                     </div>
                 </div>
                 <!-- Additional images thumbnails -->
@@ -120,7 +120,7 @@
                         <form action="/products" method="POST" class="d-flex flex-row p-1">
                             {% csrf_token %}
                             <div class="input-group mb-3" style="max-width: 200px;">
-                                <input type="number" name="amount" id="quantity" class="form-control text-center" value="1" min="1" max="3">
+                        <input type="number" name="amount" id="quantity" class="form-control text-center" value="1" min="1" max="{% if product.stock < 3 %}{{ product.stock }}{% else %}3{% endif %}">
                             </div>
                             <input hidden type="text" class="btn btn-primary btn-sm" value="{{product.id}}" name="prdid">
                             <input type="submit" class="btn btn-sm cartbtn" value="ADD TO CART">
@@ -287,6 +287,65 @@
         document.addEventListener('DOMContentLoaded', function() {
             // Initialize main image switching functionality
             initializeImageSwitching();
+
+            function validateQuantity() {
+                const quantityInput = document.getElementById('quantity');
+                const addToCartBtn = document.querySelector('input[type="submit"].cartbtn');
+                const stock = {{ product.stock }};
+                const maxAllowed = Math.min(3, stock);
+                const warningId = 'stock-warning-message';
+
+                let warningMessage = document.getElementById(warningId);
+                if (!warningMessage) {
+                    warningMessage = document.createElement('div');
+                    warningMessage.id = warningId;
+                    warningMessage.style.color = 'red';
+                    warningMessage.style.marginTop = '5px';
+                    quantityInput.parentNode.appendChild(warningMessage);
+                }
+
+                let quantity = parseInt(quantityInput.value);
+                if (isNaN(quantity) || quantity < 1) {
+                    quantity = 1;
+                    quantityInput.value = quantity;
+                }
+
+                if (quantity > maxAllowed) {
+                    if (stock < 3) {
+                        warningMessage.textContent = `Only ${stock} item${stock > 1 ? 's' : ''} available in stock!`;
+                    } else {
+                        warningMessage.textContent = 'Maximum 3 items allowed per order!';
+                    }
+                    addToCartBtn.disabled = true;
+                } else {
+                    warningMessage.textContent = '';
+                    addToCartBtn.disabled = false;
+                }
+            }
+
+            const quantityInput = document.getElementById('quantity');
+            const form = quantityInput ? quantityInput.closest('form') : null;
+
+            if (quantityInput) {
+                quantityInput.addEventListener('input', validateQuantity);
+                validateQuantity();
+            }
+
+            if (form) {
+                form.addEventListener('submit', function(event) {
+                    const quantity = parseInt(quantityInput.value);
+                    const stock = {{ product.stock }};
+                    const maxAllowed = Math.min(3, stock);
+                    if (quantity > maxAllowed) {
+                        event.preventDefault();
+                        if (stock < 3) {
+                            alert(`Only ${stock} item${stock > 1 ? 's' : ''} available in stock!`);
+                        } else {
+                            alert('Maximum 3 items allowed per order!');
+                        }
+                    }
+                });
+            }
         });
     </script>
 {% endblock %}

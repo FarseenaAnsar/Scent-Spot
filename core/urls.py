@@ -15,6 +15,7 @@ urlpatterns = [
     path('cart/update/<int:product_id>/', cart.UpdateCartView.as_view(), name='update_cart'),
     path("check-out", checkout.CheckOut.as_view(), name="checkout"),
     path('Place-cod-order/', checkout.PlaceCODOrderView.as_view(), name='place_cod_order'),
+    path('place-wallet-order/', checkout.PlaceWalletOrderView.as_view(), name='place_wallet_order'),
     
     path("proceed-to-pay", razorpay.razorpaycheck.as_view(), name="razorpaycheck"),
     path('payment-success/<str:payment_id>/', razorpay.PaymentSuccessView.as_view(), name='payment_success'),
@@ -37,6 +38,7 @@ urlpatterns = [
     path('apply-coupon/', coupons.ApplyCouponView.as_view(), name='apply_coupon'),
     path('remove-coupon/', coupons.RemoveCouponView.as_view(), name='remove_coupon'),
     path('return-order/', returns.ReturnOrderView.as_view(), name='return_order'),
+    # path('download-invoice/<int:order_id>/', invoice.DownloadInvoiceView.as_view(), name='download_invoice'),
     
     # Email verification
     path('verify-email/', VerifyEmailView.as_view(), name='verify_email'),

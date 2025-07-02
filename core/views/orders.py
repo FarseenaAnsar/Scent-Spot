@@ -4,9 +4,12 @@ from core.models.customer import Customer
 from core.models.product import Product
 from core.models.order import Order
 from core.models.rate import Rate
+from core.models.wallet import Wallet, WalletTransaction
 from django.contrib import messages
 from django.utils import timezone
 from django.http import JsonResponse
+import uuid
+from decimal import Decimal
 
 class OrderView(View):
     def get(self, request):
@@ -54,11 +57,30 @@ class OrderView(View):
                     product.stock += order.quantity
                     product.save()
                     
+                    # Calculate refund amount and add to wallet
+                    from core.models.wallet import Wallet, WalletTransaction
+                    import uuid
+                    from decimal import Decimal
+                    
+                    refund_amount = (order.price * order.quantity) + 99 - (order.coupon_discount or 0)
+                    
+                    wallet, created = Wallet.objects.get_or_create(user=request.user)
+                    wallet.balance += Decimal(str(refund_amount))
+                    wallet.save()
+                    
+                    WalletTransaction.objects.create(
+                        wallet=wallet,
+                        transaction_id=f"REFUND-{order.id}-{uuid.uuid4().hex[:6].upper()}",
+                        transaction_type='DEPOSIT',
+                        amount=Decimal(str(refund_amount)),
+                        status='COMPLETED'
+                    )
+                    
                     order.status = "cancelled"
                     order.cancelled_at = timezone.now()
                     order.cancel_reason = reason
                     order.save()
-                    messages.success(request, "Order cancelled successfully")
+                    messages.success(request, f"Order cancelled successfully. ₹{refund_amount} refunded to your wallet.")
                 else:
                     messages.error(request, "Only orders in processing status can be cancelled")
                 
@@ -133,11 +155,30 @@ class CancelOrderView(View):
                     product.stock += order.quantity
                     product.save()
                     
+                    # Calculate refund amount and add to wallet
+                    from core.models.wallet import Wallet, WalletTransaction
+                    import uuid
+                    from decimal import Decimal
+                    
+                    refund_amount = (order.price * order.quantity) + 99 - (order.coupon_discount or 0)
+                    
+                    wallet, created = Wallet.objects.get_or_create(user=request.user)
+                    wallet.balance += Decimal(str(refund_amount))
+                    wallet.save()
+                    
+                    WalletTransaction.objects.create(
+                        wallet=wallet,
+                        transaction_id=f"REFUND-{order.id}-{uuid.uuid4().hex[:6].upper()}",
+                        transaction_type='DEPOSIT',
+                        amount=Decimal(str(refund_amount)),
+                        status='COMPLETED'
+                    )
+                    
                     order.status = "cancelled"
                     order.cancelled_at = timezone.now()
                     order.cancel_reason = reason
                     order.save()
-                    return JsonResponse({'status': 'success'})
+                    return JsonResponse({'status': 'success', 'message': f'Order cancelled. ₹{refund_amount} refunded to wallet.'})
                 else:
                     return JsonResponse({'status': 'error', 'message': 'Only orders in processing status can be cancelled'})
             except Order.DoesNotExist:

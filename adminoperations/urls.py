@@ -58,7 +58,7 @@ urlpatterns = [
 
     path('sales-report/', views.SalesReportView.as_view(), name='sales_report'),
     
-    # Wallet Management URLs
+    # Wallet Management 
     path('adminhome/wallet/', views.AdminWalletListView.as_view(), name='admin_wallet_list'),
     path('adminhome/wallet/<int:transaction_id>/', views.AdminWalletDetailView.as_view(), name='admin_wallet_detail'),
 ] 

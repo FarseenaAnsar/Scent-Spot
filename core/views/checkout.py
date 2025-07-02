@@ -6,9 +6,12 @@ from core.models.order import Order
 from core.models.order import OrderItem
 from core.models.cart import CartItem
 from core.models.wishlist import Wishlist
+from core.models.address import Address
+from core.models.wallet import Wallet, WalletTransaction
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.http import JsonResponse
 import time
+import uuid
 
 class CheckOut(LoginRequiredMixin, View):
     def get(self, request):
@@ -32,12 +35,28 @@ class CheckOut(LoginRequiredMixin, View):
         # Getting discount from session if available
         coupon_discount = request.session.get('discount', 0)
         
+        # Get saved addresses
+        try:
+            customer = Customer.objects.get(email=request.user.username)
+            addresses = Address.objects.filter(customer=customer)
+        except Customer.DoesNotExist:
+            addresses = []
+        
+        # Get wallet balance
+        try:
+            wallet = Wallet.objects.get(user=request.user)
+            wallet_balance = wallet.balance
+        except Wallet.DoesNotExist:
+            wallet_balance = 0
+        
         context = {
             'cart_items': cart_items,
             'original_total': original_total,
             'total': total_with_offers,
             'offer_discount': offer_discount,
             'discount': coupon_discount,
+            'addresses': addresses,
+            'wallet_balance': wallet_balance,
         }
         return render(request, 'pay.html', context)
     
@@ -78,7 +97,7 @@ class CheckOut(LoginRequiredMixin, View):
                     customer=cart_item.user,  # Assuming you're using Django's auth system
                     quantity=cart_item.quantity,
                     price=cart_item.product.price,
-                    address=address,
+                    adress=address,
                     
                 )
                 order.save()
@@ -151,10 +170,7 @@ class PlaceCODOrderView(LoginRequiredMixin, View):
             request.session['customer_id'] = customer.id
             print(f"Stored customer ID {customer.id} in session")
             
-            # Get coupon discount from session
-            coupon_discount = request.session.get('discount', 0)
-            
-            # Calculate total amount to check COD eligibility
+            # Calculate expected amount from cart (server-side validation)
             cart_total = 0
             for item in cart_items:
                 if hasattr(item.product, 'has_offer') and item.product.has_offer:
@@ -162,10 +178,22 @@ class PlaceCODOrderView(LoginRequiredMixin, View):
                 else:
                     cart_total += item.product.price * item.quantity
             
-            final_total = cart_total - coupon_discount + 99  # Add convenience fee
+            # Get coupon discount from session
+            coupon_discount = request.session.get('discount', 0)
+            expected_total = cart_total - coupon_discount + 99  # Add convenience fee
+            
+            # Validate submitted amount against calculated amount
+            submitted_total = float(request.POST.get('total'))
+            if abs(submitted_total - expected_total) > 0.01:
+                return JsonResponse({
+                    'status': 'error',
+                    'message': f'Amount validation failed. Expected: ₹{expected_total}, Submitted: ₹{submitted_total}'
+                })
+            
+            final_total = expected_total  # Use server-calculated amount
             
             # Check if COD is allowed (orders above ₹1000 not allowed for COD)
-            if final_total > 1000:
+            if expected_total > 1000:
                 return JsonResponse({
                     'status': 'error',
                     'message': 'Cash on Delivery is not available for orders above ₹1000. Please choose online payment.'
@@ -226,3 +254,89 @@ class PlaceCODOrderView(LoginRequiredMixin, View):
                 'status': 'error',
                 'message': str(e)
             })
+
+class PlaceWalletOrderView(LoginRequiredMixin, View):
+    def post(self, request):
+        try:
+            fname = request.POST.get('fname')
+            phone = request.POST.get('phone')
+            address = request.POST.get('address')
+            from decimal import Decimal
+            # Calculate expected amount from cart (server-side validation)
+            cart_items = CartItem.objects.filter(user=request.user).select_related('product')
+            expected_total = Decimal('0')
+            for item in cart_items:
+                if hasattr(item.product, 'has_offer') and item.product.has_offer:
+                    expected_total += Decimal(str(item.product.get_discount_price)) * item.quantity
+                else:
+                    expected_total += Decimal(str(item.product.price)) * item.quantity
+            
+            # Add discount and convenience fee
+            coupon_discount = Decimal(str(request.session.get('discount', 0)))
+            expected_total = expected_total - coupon_discount + Decimal('99')
+            
+            # Validate submitted amount against calculated amount
+            submitted_total = Decimal(str(request.POST.get('total')))
+            if abs(submitted_total - expected_total) > Decimal('0.01'):
+                return JsonResponse({
+                    'status': 'error',
+                    'message': f'Amount validation failed. Expected: ₹{expected_total}, Submitted: ₹{submitted_total}'
+                })
+            
+            total = expected_total  # Use server-calculated amount
+            
+            if not cart_items:
+                return JsonResponse({'status': 'error', 'message': 'Your cart is empty'})
+            
+            try:
+                wallet = Wallet.objects.get(user=request.user)
+            except Wallet.DoesNotExist:
+                return JsonResponse({'status': 'error', 'message': 'Wallet not found. Please add money to your wallet first.'})
+            
+            if wallet.balance < total:
+                return JsonResponse({'status': 'error', 'message': f'Insufficient wallet balance. Your balance: ₹{wallet.balance}, Required: ₹{total}'})
+            
+            try:
+                customer = Customer.objects.get(email=request.user.username)
+            except Customer.DoesNotExist:
+                customer = Customer.objects.create(email=request.user.username, first_name=fname, phone=phone)
+            
+            order_id = f"WALLET-{int(time.time())}"
+            payment_id = f"WALLET-{int(time.time())}"
+            coupon_discount = request.session.get('discount', 0)
+            
+            for item in cart_items:
+                if item.product.stock < item.quantity:
+                    return JsonResponse({'status': 'error', 'message': f'Not enough stock for {item.product.name}. Only {item.product.stock} available.'})
+                
+                item.product.stock -= item.quantity
+                item.product.save()
+                
+                price = item.product.get_discount_price if hasattr(item.product, 'has_offer') and item.product.has_offer else item.product.price
+                
+                Order.objects.create(
+                    product=item.product, customer=customer, quantity=item.quantity, price=price,
+                    adress=address, phone=phone, order_id=order_id, payment_id=payment_id,
+                    coupon_discount=coupon_discount, status="processing"
+                )
+                
+                Wishlist.objects.filter(user=request.user, product=item.product).delete()
+            
+            wallet.balance -= total
+            wallet.save()
+            
+            WalletTransaction.objects.create(
+                wallet=wallet, transaction_id=str(uuid.uuid4())[:10],
+                transaction_type='WITHDRAWAL', amount=total, status='COMPLETED'
+            )
+            
+            cart_items.delete()
+            
+            return JsonResponse({
+                'status': 'success', 'order_id': order_id, 'payment_id': payment_id,
+                'redirect_url': f'/payment-success/{payment_id}/',
+                'message': 'Your order has been placed successfully using wallet!'
+            })
+            
+        except Exception as e:
+            return JsonResponse({'status': 'error', 'message': str(e)})

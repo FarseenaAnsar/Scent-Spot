@@ -56,6 +56,19 @@ class Products(View):
                 # Add to database cart for logged-in users
                 try:
                     quantity = int(amt)
+                    
+                    # Check if requested quantity exceeds stock
+                    if quantity > product.stock:
+                        messages.error(request, f"Only {product.stock} items available in stock!")
+                        return render(request, "products.html", {
+                            "product": p_obj[0],
+                            "cat_type": type2,
+                            "similar_products": similar_products,
+                            "additional_images": additional_images,
+                            "perfume_attributes": perfume_attributes,
+                            "out_of_stock": product.stock < 1
+                        })
+                    
                     cart_item, created = CartItem.objects.get_or_create(
                         user=request.user,
                         product=product,
@@ -65,13 +78,23 @@ class Products(View):
                     if not created:
                         # Check if adding more would exceed available stock
                         if cart_item.quantity + quantity > product.stock:
-                            messages.warning(request, f"Only {product.stock} items available in stock!")
-                            quantity = product.stock - cart_item.quantity if cart_item.quantity < product.stock else 0
+                            available = product.stock - cart_item.quantity
+                            if available <= 0:
+                                messages.error(request, f"You already have the maximum available quantity in your cart!")
+                            else:
+                                messages.error(request, f"Only {available} more items can be added to cart!")
+                            return render(request, "products.html", {
+                                "product": p_obj[0],
+                                "cat_type": type2,
+                                "similar_products": similar_products,
+                                "additional_images": additional_images,
+                                "perfume_attributes": perfume_attributes,
+                                "out_of_stock": product.stock < 1
+                            })
                         
-                        if quantity > 0:
-                            cart_item.quantity += quantity
-                            cart_item.save()
-                            messages.success(request, 'Cart updated successfully!')
+                        cart_item.quantity += quantity
+                        cart_item.save()
+                        messages.success(request, 'Cart updated successfully!')
                     else:
                         messages.success(request, 'Item added to your cart!')
                         
@@ -85,16 +108,39 @@ class Products(View):
                 # Use session cart for non-logged in users
                 cart = request.session.get("cart", {})
                 q = cart.get(str(prd_id), 0)
+                quantity = int(amt)
+                
+                # Check if requested quantity exceeds stock
+                if quantity > product.stock:
+                    messages.error(request, f"Only {product.stock} items available in stock!")
+                    return render(request, "products.html", {
+                        "product": p_obj[0],
+                        "cat_type": type2,
+                        "similar_products": similar_products,
+                        "additional_images": additional_images,
+                        "perfume_attributes": perfume_attributes,
+                        "out_of_stock": product.stock < 1
+                    })
                 
                 # Check if adding more would exceed available stock
-                if int(q) + int(amt) > product.stock:
-                    messages.warning(request, f"Only {product.stock} items available in stock!")
-                    amt = product.stock - int(q) if int(q) < product.stock else 0
+                if int(q) + quantity > product.stock:
+                    available = product.stock - int(q)
+                    if available <= 0:
+                        messages.error(request, f"You already have the maximum available quantity in your cart!")
+                    else:
+                        messages.error(request, f"Only {available} more items can be added to cart!")
+                    return render(request, "products.html", {
+                        "product": p_obj[0],
+                        "cat_type": type2,
+                        "similar_products": similar_products,
+                        "additional_images": additional_images,
+                        "perfume_attributes": perfume_attributes,
+                        "out_of_stock": product.stock < 1
+                    })
                     
-                if int(amt) > 0:
-                    q = int(q) + int(amt) if q else int(amt)
-                    cart[str(prd_id)] = q
-                    request.session["cart"] = cart
+                q = int(q) + quantity if q else quantity
+                cart[str(prd_id)] = q
+                request.session["cart"] = cart
             
             return render(request, "products.html", {
                 "product": p_obj[0],
