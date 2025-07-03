@@ -57,7 +57,7 @@
                   {% for s in sort %}
                     <div style="display:flex;">
                       <label class="dropdown-item" name="sort" style="display:flex;">{{s}}</label>
-                      <input type="checkbox" class="dropdown-item" name="sort" value="{{s}}" style="margin-top: 3%; height:18px;">
+                      <input type="checkbox" class="dropdown-item sort-checkbox" name="sort" value="{{s}}" style="margin-top: 3%; height:18px;">
                     </div>  
                   {% endfor %}
                 </ul>
@@ -246,6 +246,41 @@
     
 <script>
   document.addEventListener('DOMContentLoaded', function() {
+    // Handle Sort By filter with AJAX (immediate response)
+    document.querySelectorAll('.sort-checkbox').forEach(checkbox => {
+      checkbox.addEventListener('change', function() {
+        if (this.checked) {
+          // Uncheck other sort checkboxes
+          document.querySelectorAll('.sort-checkbox').forEach(cb => {
+            if (cb !== this) cb.checked = false;
+          });
+          
+          // Submit form with AJAX
+          const formData = new FormData();
+          formData.append('csrfmiddlewaretoken', document.querySelector('[name=csrfmiddlewaretoken]').value);
+          formData.append('sort', this.value);
+          
+          fetch('/index', {
+            method: 'POST',
+            body: formData
+          })
+          .then(response => response.text())
+          .then(html => {
+            // Replace products section with new content
+            const parser = new DOMParser();
+            const newDoc = parser.parseFromString(html, 'text/html');
+            const newProducts = newDoc.querySelector('#products');
+            if (newProducts) {
+              document.querySelector('#products').innerHTML = newProducts.innerHTML;
+            }
+          })
+          .catch(error => {
+            console.error('Error:', error);
+          });
+        }
+      });
+    });
+    
     // Handle add to cart buttons from product_list view
     document.querySelectorAll('.add-to-cart').forEach(button => {
       button.addEventListener('click', function() {
@@ -263,7 +298,6 @@
         .then(data => {
           if (data.status === 'success') {
             alert(data.message);
-            // Update cart count if you have a cart counter in your navbar
             if (document.getElementById('cart-count')) {
               document.getElementById('cart-count').textContent = data.cart_count;
             }
@@ -278,7 +312,7 @@
       });
     });
     
-    // Auto-submit form when filters change (except for checkboxes)
+    // Auto-submit form when advanced filters change
     if (document.getElementById('filter-form')) {
       document.querySelectorAll('#filter-form input[type="radio"], #filter-form select').forEach(input => {
         input.addEventListener('change', function() {

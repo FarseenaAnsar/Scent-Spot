@@ -121,7 +121,9 @@ class AddToCartView(LoginRequiredMixin, View):
     def post(self, request, product_id):
         try:
             product = get_object_or_404(Product, id=product_id)
-            quantity = int(request.POST.get('quantity', 1))
+            # Try different field names for quantity
+            quantity = int(request.POST.get('amount', request.POST.get('quantity', 1)))
+            print(f"Adding to cart: Product {product_id}, Quantity: {quantity}")  # Debug
             
             # Check if product is in stock
             if product.stock < 1:
@@ -144,17 +146,17 @@ class AddToCartView(LoginRequiredMixin, View):
             )
             
             if not created:
-                new_quantity = cart_item.quantity + quantity
+                # If item exists, set to the new quantity instead of adding
                 max_allowed = min(3, product.stock)
                 
-                if new_quantity > max_allowed:
+                if quantity > max_allowed:
                     if product.stock < 3:
                         messages.error(request, f"Only {product.stock} items available in stock!")
                     else:
                         messages.error(request, "Maximum 3 items allowed per order!")
                     return redirect('cart')
                     
-                cart_item.quantity = new_quantity
+                cart_item.quantity = quantity  # Set to exact quantity, don't add
                 cart_item.save()
                 messages.success(request, 'Cart updated successfully!')
             else:

@@ -10,15 +10,20 @@ class Category(models.Model):
 
     @staticmethod
     def get_category_type():
-        return Category.objects.name if Category.objects.exists() else ''
+        return Category.objects.values_list('name', flat=True)
         
     @staticmethod
     def get_category_type2(cat):
         return cat.name if cat else ''
-
+    
     @staticmethod
-    def get_category_type2(cat):
-        return cat.name if cat else ''
+    def get_cat_num(category):
+        cat_ty = []
+        cat = Category.objects.all()
+        for c in cat:
+            if c.name == category:
+                cat_ty.append(c.id)
+        return cat_ty
     
 # class Category(models.Model):
 #     id = models.IntegerField(primary_key=True)

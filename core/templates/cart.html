@@ -148,63 +148,67 @@
     {% endif %}
 </div>
 
-
-{% endblock %}
-
-{% block js %}
 <script>
-    function changeQuantity(productId, change) {
-        const input = document.getElementById('qty-' + productId);
-        let quantity = parseInt(input.value) + change;
-        const maxAllowed = parseInt(input.getAttribute('max'));
-        
-        if (quantity < 1) quantity = 1;
-        if (quantity > maxAllowed) quantity = maxAllowed;
-        
+function changeQuantity(productId, change) {
+    console.log('changeQuantity called:', productId, change);
+    const input = document.getElementById('qty-' + productId);
+    let quantity = parseInt(input.value) + change;
+    const maxAllowed = parseInt(input.getAttribute('max'));
+    
+    if (quantity < 1) quantity = 1;
+    if (quantity > maxAllowed) quantity = maxAllowed;
+    
+    input.value = quantity;
+    
+    // Update display immediately
+    const price = parseFloat(input.getAttribute('data-price'));
+    document.getElementById('total-' + productId).textContent = '₹' + (price * quantity).toFixed(2);
+    
+    // Send AJAX request
+    const formData = new FormData();
+    formData.append('quantity', quantity);
+    formData.append('csrfmiddlewaretoken', document.querySelector('[name=csrfmiddlewaretoken]').value);
+    
+    fetch('/cart/update/' + productId + '/', {
+        method: 'POST',
+        body: formData
+    }).then(response => {
+        if (response.ok) {
+            window.location.reload();
+        }
+    });
+}
+
+function updateCart(input) {
+    const productId = input.getAttribute('data-product-id');
+    let quantity = parseInt(input.value);
+    const maxAllowed = parseInt(input.getAttribute('max'));
+    
+    if (quantity < 1) {
+        quantity = 1;
         input.value = quantity;
-        
-        // Update display immediately
-        const price = parseFloat(input.getAttribute('data-price'));
-        document.getElementById('total-' + productId).textContent = '₹' + (price * quantity).toFixed(2);
-        
-        // Send update to server
-        const form = new FormData();
-        form.append('quantity', quantity);
-        const token = document.querySelector('[name=csrfmiddlewaretoken]').value;
-        
-        fetch('/cart/update/' + productId + '/', {
-            method: 'POST',
-            headers: { 'X-CSRFToken': token },
-            body: form
-        });
+    }
+    if (quantity > maxAllowed) {
+        quantity = maxAllowed;
+        input.value = quantity;
     }
     
-    function updateCart(input) {
-        const productId = input.getAttribute('data-product-id');
-        let quantity = parseInt(input.value);
-        const maxAllowed = parseInt(input.getAttribute('max'));
-        
-        if (quantity < 1) {
-            quantity = 1;
-            input.value = quantity;
+    const price = parseFloat(input.getAttribute('data-price'));
+    document.getElementById('total-' + productId).textContent = '₹' + (price * quantity).toFixed(2);
+    
+    const formData = new FormData();
+    formData.append('quantity', quantity);
+    formData.append('csrfmiddlewaretoken', document.querySelector('[name=csrfmiddlewaretoken]').value);
+    
+    fetch('/cart/update/' + productId + '/', {
+        method: 'POST',
+        body: formData
+    }).then(response => {
+        if (response.ok) {
+            window.location.reload();
         }
-        if (quantity > maxAllowed) {
-            quantity = maxAllowed;
-            input.value = quantity;
-        }
-        
-        const price = parseFloat(input.getAttribute('data-price'));
-        document.getElementById('total-' + productId).textContent = '₹' + (price * quantity).toFixed(2);
-        
-        const form = new FormData();
-        form.append('quantity', quantity);
-        const token = document.querySelector('[name=csrfmiddlewaretoken]').value;
-        
-        fetch('/cart/update/' + productId + '/', {
-            method: 'POST',
-            headers: { 'X-CSRFToken': token },
-            body: form
-        });
-    }
+    });
+}
 </script>
+
 {% endblock %}
